@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: geometric-brain
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api.py
+    envVars:
+      - key: PORT
+        value: 10000
+    plan: free

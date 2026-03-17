@@ -1,0 +1,17 @@
+# Core
+numpy>=1.24.0
+pydantic>=2.0.0
+mcp>=1.0.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+httpx>=0.24.0
+
+# Testing
+pytest>=7.0.0
+
+# Bridge validation (Colab / GPU environment)
+torch>=2.0.0
+transformers>=4.30.0
+datasets>=2.14.0
+scikit-learn>=1.3.0
+accelerate>=0.20.0

@@ -1,0 +1,591 @@
+"""
+Geometric Brain MCP - End-to-end Test Suite
+============================================
+
+Coverage:
+  - spectral_engine.py: spectral_health_check, manifold_audit,
+                        compute_correction, compare_models
+  - api.py: all REST endpoints via FastAPI TestClient
+
+Run with: pytest test_e2e.py -v
+"""
+
+import numpy as np
+import pytest
+
+from spectral_engine import (
+    GUE_R,
+    POISSON_R,
+    compare_models,
+    compute_correction,
+    manifold_audit,
+    spectral_health_check,
+)
+
+try:
+    from fastapi.testclient import TestClient
+    from api import app
+    _API = True
+except ImportError:
+    _API = False
+
+# ── Fixed-seed fixtures (deterministic regardless of run order) ──────────────
+
+_HS_10x16 = np.random.default_rng(42).standard_normal((10, 16)).tolist()
+_HS_20x32 = np.random.default_rng(43).standard_normal((20, 32)).tolist()
+_HS_5x8   = np.random.default_rng(44).standard_normal((5, 8)).tolist()
+_HS_1x8   = np.random.default_rng(45).standard_normal((1, 8)).tolist()   # too few samples
+_EVALS_30 = sorted(np.random.default_rng(46).standard_normal(30).tolist())
+_EVALS_20 = sorted(np.random.default_rng(47).standard_normal(20).tolist())
+_LONG_TEXT = "The quick brown fox jumps over the lazy dog. " * 50
+
+if _API:
+    _client = TestClient(app)
+
+
+# =============================================================================
+# 1. spectral_health_check
+# =============================================================================
+
+class TestSpectralHealthCheck:
+    def test_normal_text_returns_non_error_status(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert r["status"] in ("ok", "warning")
+
+    def test_normal_text_has_no_error_code(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert r["error_code"] is None
+
+    def test_short_text_returns_insufficient_data(self):
+        r = spectral_health_check("Hi")
+        assert r["status"] == "error"
+        assert r["error_code"] == "INSUFFICIENT_DATA"
+
+    def test_empty_string_returns_error(self):
+        r = spectral_health_check("")
+        assert r["status"] == "error"
+
+    def test_r_ratio_in_valid_range(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert 0.0 <= r["r_ratio"] <= 1.0
+
+    def test_shi_score_in_valid_range(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert 0.0 <= r["shi_score"] <= 100.0
+
+    def test_confidence_in_valid_range(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert 0.0 <= r["confidence"] <= 1.0
+
+    def test_regime_is_valid_string(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert r["regime"] in ("gue_like", "poisson_like", "intermediate")
+
+    def test_windows_analyzed_positive(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert r["windows_analyzed"] >= 1
+
+    def test_drift_warning_is_bool(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert isinstance(r["drift_warning"], bool)
+
+    def test_schema_keys_present(self):
+        r = spectral_health_check(_LONG_TEXT)
+        for key in (
+            "status", "error_code", "r_ratio", "shi_score", "regime",
+            "drift_warning", "confidence", "windows_analyzed", "spacing_count",
+        ):
+            assert key in r, f"Missing key: {key}"
+
+    def test_spacing_count_is_positive_int(self):
+        r = spectral_health_check(_LONG_TEXT)
+        assert isinstance(r["spacing_count"], int)
+        assert r["spacing_count"] > 0
+
+    def test_custom_window_size_and_stride(self):
+        r = spectral_health_check(_LONG_TEXT, window_size=64, stride=32)
+        assert r["status"] in ("ok", "warning", "error")
+
+    def test_window_size_larger_than_text_falls_back(self):
+        short = "Hello world this is a test sentence."
+        r = spectral_health_check(short, window_size=512)
+        assert r["status"] in ("ok", "warning", "error")
+
+
+# =============================================================================
+# 2. manifold_audit
+# =============================================================================
+
+class TestManifoldAudit:
+    def test_valid_hidden_states_runs(self):
+        r = manifold_audit(hidden_states=_HS_10x16)
+        assert r["status"] in ("ok", "warning")
+
+    def test_valid_eigenvalues_runs(self):
+        r = manifold_audit(eigenvalues=_EVALS_30)
+        assert r["status"] in ("ok", "warning")
+        assert "mean_r_ratio" in r
+
+    def test_no_input_returns_error(self):
+        r = manifold_audit()
+        assert r["status"] == "error"
+        assert r["error_code"] == "NO_INPUT"
+
+    def test_too_few_samples_returns_error(self):
+        r = manifold_audit(hidden_states=_HS_1x8)
+        assert r["status"] == "error"
+        assert r["error_code"] == "INSUFFICIENT_SAMPLES"
+
+    def test_nan_in_hidden_states_raises(self):
+        bad = [row[:] for row in _HS_5x8]
+        bad[0][0] = float("nan")
+        with pytest.raises(ValueError, match="NaN"):
+            manifold_audit(hidden_states=bad)
+
+    def test_inf_in_eigenvalues_raises(self):
+        bad = _EVALS_20[:]
+        bad[0] = float("inf")
+        with pytest.raises(ValueError, match="Inf"):
+            manifold_audit(eigenvalues=bad)
+
+    def test_schema_keys_present(self):
+        r = manifold_audit(hidden_states=_HS_10x16)
+        for key in (
+            "spectral_health_score", "mean_r_ratio", "variance_r_ratio",
+            "spectral_regime", "lambda_2", "confidence", "spacing_count",
+            "gue_distance", "poisson_distance", "zeta_score", "summary",
+        ):
+            assert key in r, f"Missing key: {key}"
+
+    def test_spectral_health_score_in_range(self):
+        r = manifold_audit(hidden_states=_HS_20x32)
+        assert 0.0 <= r["spectral_health_score"] <= 100.0
+
+    def test_confidence_in_range(self):
+        r = manifold_audit(hidden_states=_HS_20x32)
+        assert 0.0 <= r["confidence"] <= 1.0
+
+    def test_regime_is_valid_string(self):
+        r = manifold_audit(hidden_states=_HS_10x16)
+        assert r["spectral_regime"] in ("gue_like", "poisson_like", "intermediate")
+
+    def test_engine_returns_eigenvalues_key(self):
+        r = manifold_audit(hidden_states=_HS_10x16)
+        # engine always emits eigenvalues; api/server may strip them
+        assert "eigenvalues" in r
+
+    def test_disable_center_and_normalize(self):
+        r = manifold_audit(hidden_states=_HS_10x16, normalize=False, center=False)
+        assert "spectral_health_score" in r
+
+    def test_summary_is_string(self):
+        r = manifold_audit(hidden_states=_HS_10x16)
+        assert isinstance(r["summary"], str)
+        assert len(r["summary"]) > 0
+
+
+# =============================================================================
+# 3. compute_correction
+# =============================================================================
+
+class TestComputeCorrection:
+    def test_at_gue_target_is_hold(self):
+        r = compute_correction(current_r_ratio=GUE_R)
+        assert r["direction"] == "hold"
+        assert r["status"] == "ok"
+
+    def test_below_target_requests_increase(self):
+        r = compute_correction(current_r_ratio=POISSON_R)
+        assert r["direction"] == "increase_repulsion"
+
+    def test_above_target_requests_decrease(self):
+        r = compute_correction(current_r_ratio=0.9)
+        assert r["direction"] == "decrease_repulsion"
+
+    def test_delta_positive_when_below_target(self):
+        r = compute_correction(current_r_ratio=0.3, clamp=False)
+        assert r["delta"] > 0
+
+    def test_delta_negative_when_above_target(self):
+        r = compute_correction(current_r_ratio=0.8, clamp=False)
+        assert r["delta"] < 0
+
+    def test_clamp_limits_magnitude(self):
+        r = compute_correction(current_r_ratio=0.0, clamp=True, max_magnitude=0.3)
+        assert abs(r["delta"]) <= 0.3 + 1e-9
+
+    def test_gain_amplifies_delta(self):
+        r1 = compute_correction(current_r_ratio=0.4, gain=1.0, clamp=False)
+        r2 = compute_correction(current_r_ratio=0.4, gain=2.0, clamp=False)
+        assert abs(r2["delta"]) > abs(r1["delta"])
+
+    def test_invalid_r_ratio_returns_error(self):
+        r = compute_correction(current_r_ratio=1.5)
+        assert r["status"] == "error"
+        assert r["error_code"] == "INVALID_R_RATIO"
+
+    def test_delta_equals_intervention_signal(self):
+        r = compute_correction(current_r_ratio=0.5)
+        assert r["delta"] == r["intervention_signal"]
+
+    def test_confidence_in_range(self):
+        r = compute_correction(current_r_ratio=GUE_R)
+        assert 0.0 <= r["confidence"] <= 1.0
+
+    def test_schema_keys_present(self):
+        r = compute_correction(current_r_ratio=0.5)
+        for key in (
+            "status", "error_code", "current_r_ratio", "target_r_ratio",
+            "delta", "intervention_signal", "magnitude", "direction",
+            "recommended_action", "recommended_sigma", "confidence",
+        ):
+            assert key in r, f"Missing key: {key}"
+
+    def test_custom_target_hold(self):
+        r = compute_correction(current_r_ratio=0.5, target_r_ratio=0.5)
+        assert r["direction"] == "hold"
+
+    def test_recommendation_action_is_string(self):
+        r = compute_correction(current_r_ratio=0.4)
+        assert isinstance(r["recommended_action"], str)
+
+
+# =============================================================================
+# 4. compare_models
+# =============================================================================
+
+class TestCompareModels:
+    def test_identical_inputs_produce_tie(self):
+        r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_10x16)
+        assert r["healthier_model"] == "tie"
+        assert r["delta_health_score"] == 0.0
+
+    def test_healthier_model_valid_value(self):
+        r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_20x32)
+        assert r["healthier_model"] in ("left", "right", "tie")
+
+    def test_status_ok_for_valid_inputs(self):
+        r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_20x32)
+        assert r["status"] in ("ok", "warning")
+
+    def test_schema_keys_present(self):
+        r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_10x16)
+        for key in (
+            "status", "error_code", "healthier_model", "delta_health_score",
+            "left_regime", "right_regime", "comparative_summary", "warnings",
+            "left_health_score", "right_health_score",
+        ):
+            assert key in r, f"Missing key: {key}"
+
+    def test_delta_health_score_is_float(self):
+        r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_20x32)
+        assert isinstance(r["delta_health_score"], float)
+
+    def test_comparative_summary_is_string(self):
+        r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_10x16)
+        assert isinstance(r["comparative_summary"], str)
+        assert len(r["comparative_summary"]) > 0
+
+    def test_warnings_is_list(self):
+        r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_10x16)
+        assert isinstance(r["warnings"], list)
+
+    def test_left_error_propagated(self):
+        r = compare_models(left_hidden_states=_HS_1x8, right_hidden_states=_HS_10x16)
+        assert r["status"] == "error"
+        assert r["error_code"] == "LEFT_FAILED"
+
+    def test_right_error_propagated(self):
+        r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_1x8)
+        assert r["status"] == "error"
+        assert r["error_code"] == "RIGHT_FAILED"
+
+    def test_eigenvalue_inputs(self):
+        r = compare_models(left_eigenvalues=_EVALS_30, right_eigenvalues=_EVALS_20)
+        assert r["status"] in ("ok", "warning")
+
+    def test_delta_symmetric(self):
+        r1 = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_20x32)
+        r2 = compare_models(left_hidden_states=_HS_20x32, right_hidden_states=_HS_10x16)
+        assert abs(r1["delta_health_score"] + r2["delta_health_score"]) < 1e-9
+
+
+# =============================================================================
+# 5. REST API — meta and health probes
+# =============================================================================
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestAPIMeta:
+    def test_healthz_200(self):
+        r = _client.get("/healthz")
+        assert r.status_code == 200
+        assert r.json()["status"] == "ok"
+
+    def test_healthz_service_name(self):
+        r = _client.get("/healthz")
+        assert r.json()["service"] == "geometric-brain"
+
+    def test_readyz_200(self):
+        r = _client.get("/readyz")
+        assert r.status_code == 200
+        assert r.json()["status"] == "ready"
+
+    def test_readyz_has_schema_version(self):
+        r = _client.get("/readyz")
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_capabilities_four_tools(self):
+        r = _client.get("/v1/meta/capabilities")
+        assert r.status_code == 200
+        body = r.json()
+        assert len(body["tools"]) == 4
+        for tool in (
+            "brain_health_check", "brain_manifold_audit",
+            "brain_compute_correction", "brain_compare_models",
+        ):
+            assert tool in body["tools"]
+
+    def test_capabilities_gue_constant(self):
+        r = _client.get("/v1/meta/capabilities")
+        assert r.json()["constants"]["gue_r"] == pytest.approx(0.578)
+
+    def test_capabilities_poisson_constant(self):
+        r = _client.get("/v1/meta/capabilities")
+        assert r.json()["constants"]["poisson_r"] == pytest.approx(0.386)
+
+    def test_capabilities_limits(self):
+        r = _client.get("/v1/meta/capabilities")
+        limits = r.json()["limits"]
+        assert limits["max_text_length"] == 20_000
+        assert limits["max_hidden_state_samples"] == 8192
+
+
+# =============================================================================
+# 6. REST API — POST /v1/brain/health-check
+# =============================================================================
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestAPIHealthCheck:
+    def test_valid_returns_200(self):
+        r = _client.post("/v1/brain/health-check", json={"text": _LONG_TEXT})
+        assert r.status_code == 200
+
+    def test_schema_version_in_response(self):
+        r = _client.post("/v1/brain/health-check", json={"text": _LONG_TEXT})
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_missing_text_returns_422(self):
+        r = _client.post("/v1/brain/health-check", json={})
+        assert r.status_code == 422
+
+    def test_text_too_long_returns_422(self):
+        r = _client.post("/v1/brain/health-check", json={"text": "x" * 20_001})
+        assert r.status_code == 422
+
+    def test_extra_field_returns_422(self):
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": _LONG_TEXT, "undeclared_field": True},
+        )
+        assert r.status_code == 422
+
+    def test_custom_window_and_stride(self):
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": _LONG_TEXT, "window_size": 64, "stride": 32},
+        )
+        assert r.status_code == 200
+
+    def test_window_size_below_minimum_returns_422(self):
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": _LONG_TEXT, "window_size": 4},
+        )
+        assert r.status_code == 422
+
+
+# =============================================================================
+# 7. REST API — POST /v1/brain/manifold-audit
+# =============================================================================
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestAPIManifoldAudit:
+    def test_hidden_states_returns_200(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states", "hidden_states": _HS_10x16},
+        )
+        assert r.status_code == 200
+        assert "spectral_health_score" in r.json()
+
+    def test_eigenvalues_returns_200(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "eigenvalues", "eigenvalues": _EVALS_30},
+        )
+        assert r.status_code == 200
+
+    def test_schema_version_in_response(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states", "hidden_states": _HS_10x16},
+        )
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_eigenvalues_excluded_by_default(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states", "hidden_states": _HS_10x16},
+        )
+        assert r.status_code == 200
+        assert "eigenvalues" not in r.json()
+
+    def test_eigenvalues_included_when_requested(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={
+                "source_type": "hidden_states",
+                "hidden_states": _HS_10x16,
+                "return_eigenvalues": True,
+            },
+        )
+        assert r.status_code == 200
+        assert "eigenvalues" in r.json()
+
+    def test_missing_source_type_returns_422(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"hidden_states": _HS_10x16},
+        )
+        assert r.status_code == 422
+
+    def test_source_hidden_states_without_data_returns_422(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states"},
+        )
+        assert r.status_code == 422
+
+    def test_invalid_source_type_returns_422(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "gradient_states", "hidden_states": _HS_5x8},
+        )
+        assert r.status_code == 422
+
+
+# =============================================================================
+# 8. REST API — POST /v1/brain/compute-correction
+# =============================================================================
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestAPIComputeCorrection:
+    def test_at_gue_returns_hold(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": GUE_R},
+        )
+        assert r.status_code == 200
+        assert r.json()["direction"] == "hold"
+
+    def test_below_gue_returns_increase(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": 0.3},
+        )
+        assert r.status_code == 200
+        assert r.json()["direction"] == "increase_repulsion"
+
+    def test_schema_version_in_response(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": 0.5},
+        )
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_r_ratio_above_1_returns_422(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": 1.5},
+        )
+        assert r.status_code == 422
+
+    def test_r_ratio_below_0_returns_422(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": -0.1},
+        )
+        assert r.status_code == 422
+
+    def test_custom_equal_target_is_hold(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": 0.5, "target_r_ratio": 0.5},
+        )
+        assert r.status_code == 200
+        assert r.json()["direction"] == "hold"
+
+    def test_gain_param_accepted(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": 0.4, "gain": 2.0},
+        )
+        assert r.status_code == 200
+
+    def test_gain_above_max_returns_422(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": 0.4, "gain": 11.0},
+        )
+        assert r.status_code == 422
+
+
+# =============================================================================
+# 9. REST API — POST /v1/brain/compare-models
+# =============================================================================
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestAPICompareModels:
+    _L = {"model_label": "model-a", "source_type": "hidden_states", "hidden_states": _HS_10x16}
+    _R = {"model_label": "model-b", "source_type": "hidden_states", "hidden_states": _HS_20x32}
+
+    def test_valid_returns_200(self):
+        r = _client.post("/v1/brain/compare-models", json={"left": self._L, "right": self._R})
+        assert r.status_code == 200
+
+    def test_labels_in_response(self):
+        r = _client.post("/v1/brain/compare-models", json={"left": self._L, "right": self._R})
+        body = r.json()
+        assert body["left_label"] == "model-a"
+        assert body["right_label"] == "model-b"
+
+    def test_schema_version_in_response(self):
+        r = _client.post("/v1/brain/compare-models", json={"left": self._L, "right": self._R})
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_healthier_model_key_present(self):
+        r = _client.post("/v1/brain/compare-models", json={"left": self._L, "right": self._R})
+        assert "healthier_model" in r.json()
+
+    def test_eigenvalue_inputs(self):
+        r = _client.post(
+            "/v1/brain/compare-models",
+            json={
+                "left":  {"model_label": "ckpt-100", "source_type": "eigenvalues", "eigenvalues": _EVALS_30},
+                "right": {"model_label": "ckpt-200", "source_type": "eigenvalues", "eigenvalues": _EVALS_20},
+            },
+        )
+        assert r.status_code == 200
+
+    def test_missing_left_returns_422(self):
+        r = _client.post("/v1/brain/compare-models", json={"right": self._R})
+        assert r.status_code == 422
+
+    def test_missing_right_returns_422(self):
+        r = _client.post("/v1/brain/compare-models", json={"left": self._L})
+        assert r.status_code == 422
+
+    def test_empty_model_label_returns_422(self):
+        bad_l = {**self._L, "model_label": ""}
+        r = _client.post("/v1/brain/compare-models", json={"left": bad_l, "right": self._R})
+        assert r.status_code == 422
