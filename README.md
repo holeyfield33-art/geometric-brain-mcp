@@ -27,7 +27,7 @@ If you do not need the theory, you can treat it as: input model signals, get a r
 ## Interface Options
 
 | Interface | Best for | Entry point |
-|---|---|---|
+| --- | --- | --- |
 | MCP Server | MCP-compatible agents and orchestration runtimes | `python server.py` |
 | HTTP API | Service-to-service and language-agnostic clients | `python api.py` |
 | Python Module | Direct embedding in pipelines and research code | `import spectral_engine` |
@@ -35,15 +35,19 @@ If you do not need the theory, you can treat it as: input model signals, get a r
 ## Feature Set
 
 ### `brain_health_check`
+
 Text proxy analysis that estimates spectral health, regime, confidence, and warnings.
 
 ### `brain_manifold_audit`
+
 Primary diagnostic for hidden states or eigenvalues, with strict validation and structured audit output.
 
 ### `brain_compute_correction`
+
 Converts current `r_ratio` into a bounded intervention delta and recommendation.
 
 ### `brain_compare_models`
+
 Runs parallel diagnostics and returns comparative health verdicts and deltas.
 
 ## Quick Start

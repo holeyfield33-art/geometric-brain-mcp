@@ -25,6 +25,7 @@ import json
 import os
 import sys
 import time
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -103,8 +104,8 @@ def validate():
         "google/gemma-2b",
     ]
 
-    model = None
-    tokenizer = None
+    model: Any = None
+    tokenizer: Any = None
     model_name = None
 
     for candidate in model_candidates:
@@ -150,13 +151,15 @@ def validate():
 
     start_time = time.time()
 
-    for item in ds:
+    for raw_item in ds:
         if count >= max_samples:
             break
 
+        item = cast(dict[str, Any], raw_item)
         question = item["question"]
-        choices = item["mc1_targets"]["choices"]
-        labels = item["mc1_targets"]["labels"]
+        mc1_targets = cast(dict[str, Any], item["mc1_targets"])
+        choices = mc1_targets["choices"]
+        labels = mc1_targets["labels"]
 
         # Find correct and incorrect answers
         correct = None

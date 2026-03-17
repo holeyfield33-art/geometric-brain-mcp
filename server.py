@@ -10,7 +10,7 @@ Built through TMRP: Gemini (core math) + ChatGPT (schemas/architecture) + Claude
 """
 
 import json
-from typing import List, Literal, Optional
+from typing import Any, List, Literal, Optional, cast
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -26,6 +26,19 @@ from spectral_engine import (
 mcp = FastMCP("geometric_brain_mcp")
 
 SCHEMA_VERSION = "1.0.0"
+
+
+def _tool_annotations(title: str) -> Any:
+    return cast(
+        Any,
+        {
+            "title": title,
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+    )
 
 
 # ==============================================
@@ -159,13 +172,7 @@ class CompareInput(BaseModel):
 
 @mcp.tool(
     name="brain_health_check",
-    annotations={
-        "title": "Spectral Health Check",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    },
+    annotations=_tool_annotations("Spectral Health Check"),
 )
 async def brain_health_check(params: HealthCheckInput) -> str:
     """Analyze text for spectral health using GUE spacing ratio.
@@ -204,13 +211,7 @@ async def brain_health_check(params: HealthCheckInput) -> str:
 
 @mcp.tool(
     name="brain_manifold_audit",
-    annotations={
-        "title": "Manifold Spectral Audit",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    },
+    annotations=_tool_annotations("Manifold Spectral Audit"),
 )
 async def brain_manifold_audit(params: ManifoldAuditInput) -> str:
     """Full spectral manifold analysis from model hidden states or eigenvalues.
@@ -251,13 +252,7 @@ async def brain_manifold_audit(params: ManifoldAuditInput) -> str:
 
 @mcp.tool(
     name="brain_compute_correction",
-    annotations={
-        "title": "Spectral Correction Signal",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    },
+    annotations=_tool_annotations("Spectral Correction Signal"),
 )
 async def brain_compute_correction(params: CorrectionInput) -> str:
     """Compute intervention signal to restore GUE spectral rigidity.
@@ -294,13 +289,7 @@ async def brain_compute_correction(params: CorrectionInput) -> str:
 
 @mcp.tool(
     name="brain_compare_models",
-    annotations={
-        "title": "Compare Model Spectral Health",
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    },
+    annotations=_tool_annotations("Compare Model Spectral Health"),
 )
 async def brain_compare_models(params: CompareInput) -> str:
     """Compare spectral health between two models, checkpoints, or layers.
@@ -355,6 +344,7 @@ if __name__ == "__main__":
             if arg == "--port" and i + 1 < len(sys.argv):
                 port = int(sys.argv[i + 1])
         print(f"Starting Geometric Brain MCP on HTTP port {port}")
-        mcp.run(transport="streamable_http", port=port)
+        run_kwargs: dict[str, Any] = {"transport": "streamable_http", "port": port}
+        mcp.run(**run_kwargs)
     else:
         mcp.run()
