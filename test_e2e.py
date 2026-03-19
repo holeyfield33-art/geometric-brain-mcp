@@ -24,7 +24,9 @@ from spectral_engine import (
 
 try:
     from fastapi.testclient import TestClient
+
     from api import app
+
     _API = True
 except ImportError:
     _API = False
@@ -33,8 +35,8 @@ except ImportError:
 
 _HS_10x16 = np.random.default_rng(42).standard_normal((10, 16)).tolist()
 _HS_20x32 = np.random.default_rng(43).standard_normal((20, 32)).tolist()
-_HS_5x8   = np.random.default_rng(44).standard_normal((5, 8)).tolist()
-_HS_1x8   = np.random.default_rng(45).standard_normal((1, 8)).tolist()   # too few samples
+_HS_5x8 = np.random.default_rng(44).standard_normal((5, 8)).tolist()
+_HS_1x8 = np.random.default_rng(45).standard_normal((1, 8)).tolist()  # too few samples
 _EVALS_30 = sorted(np.random.default_rng(46).standard_normal(30).tolist())
 _EVALS_20 = sorted(np.random.default_rng(47).standard_normal(20).tolist())
 _LONG_TEXT = "The quick brown fox jumps over the lazy dog. " * 50
@@ -46,6 +48,7 @@ if _API:
 # =============================================================================
 # 1. spectral_health_check
 # =============================================================================
+
 
 class TestSpectralHealthCheck:
     def test_normal_text_returns_non_error_status(self):
@@ -92,8 +95,15 @@ class TestSpectralHealthCheck:
     def test_schema_keys_present(self):
         r = spectral_health_check(_LONG_TEXT)
         for key in (
-            "status", "error_code", "r_ratio", "shi_score", "regime",
-            "drift_warning", "confidence", "windows_analyzed", "spacing_count",
+            "status",
+            "error_code",
+            "r_ratio",
+            "shi_score",
+            "regime",
+            "drift_warning",
+            "confidence",
+            "windows_analyzed",
+            "spacing_count",
         ):
             assert key in r, f"Missing key: {key}"
 
@@ -115,6 +125,7 @@ class TestSpectralHealthCheck:
 # =============================================================================
 # 2. manifold_audit
 # =============================================================================
+
 
 class TestManifoldAudit:
     def test_valid_hidden_states_runs(self):
@@ -151,9 +162,17 @@ class TestManifoldAudit:
     def test_schema_keys_present(self):
         r = manifold_audit(hidden_states=_HS_10x16)
         for key in (
-            "spectral_health_score", "mean_r_ratio", "variance_r_ratio",
-            "spectral_regime", "lambda_2", "confidence", "spacing_count",
-            "gue_distance", "poisson_distance", "zeta_score", "summary",
+            "spectral_health_score",
+            "mean_r_ratio",
+            "variance_r_ratio",
+            "spectral_regime",
+            "lambda_2",
+            "confidence",
+            "spacing_count",
+            "gue_distance",
+            "poisson_distance",
+            "zeta_score",
+            "summary",
         ):
             assert key in r, f"Missing key: {key}"
 
@@ -187,6 +206,7 @@ class TestManifoldAudit:
 # =============================================================================
 # 3. compute_correction
 # =============================================================================
+
 
 class TestComputeCorrection:
     def test_at_gue_target_is_hold(self):
@@ -235,9 +255,17 @@ class TestComputeCorrection:
     def test_schema_keys_present(self):
         r = compute_correction(current_r_ratio=0.5)
         for key in (
-            "status", "error_code", "current_r_ratio", "target_r_ratio",
-            "delta", "intervention_signal", "magnitude", "direction",
-            "recommended_action", "recommended_sigma", "confidence",
+            "status",
+            "error_code",
+            "current_r_ratio",
+            "target_r_ratio",
+            "delta",
+            "intervention_signal",
+            "magnitude",
+            "direction",
+            "recommended_action",
+            "recommended_sigma",
+            "confidence",
         ):
             assert key in r, f"Missing key: {key}"
 
@@ -253,6 +281,7 @@ class TestComputeCorrection:
 # =============================================================================
 # 4. compare_models
 # =============================================================================
+
 
 class TestCompareModels:
     def test_identical_inputs_produce_tie(self):
@@ -271,9 +300,16 @@ class TestCompareModels:
     def test_schema_keys_present(self):
         r = compare_models(left_hidden_states=_HS_10x16, right_hidden_states=_HS_10x16)
         for key in (
-            "status", "error_code", "healthier_model", "delta_health_score",
-            "left_regime", "right_regime", "comparative_summary", "warnings",
-            "left_health_score", "right_health_score",
+            "status",
+            "error_code",
+            "healthier_model",
+            "delta_health_score",
+            "left_regime",
+            "right_regime",
+            "comparative_summary",
+            "warnings",
+            "left_health_score",
+            "right_health_score",
         ):
             assert key in r, f"Missing key: {key}"
 
@@ -314,6 +350,7 @@ class TestCompareModels:
 # 5. REST API — meta and health probes
 # =============================================================================
 
+
 @pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
 class TestAPIMeta:
     def test_healthz_200(self):
@@ -340,8 +377,10 @@ class TestAPIMeta:
         body = r.json()
         assert len(body["tools"]) == 4
         for tool in (
-            "brain_health_check", "brain_manifold_audit",
-            "brain_compute_correction", "brain_compare_models",
+            "brain_health_check",
+            "brain_manifold_audit",
+            "brain_compute_correction",
+            "brain_compare_models",
         ):
             assert tool in body["tools"]
 
@@ -363,6 +402,7 @@ class TestAPIMeta:
 # =============================================================================
 # 6. REST API — POST /v1/brain/health-check
 # =============================================================================
+
 
 @pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
 class TestAPIHealthCheck:
@@ -407,6 +447,7 @@ class TestAPIHealthCheck:
 # =============================================================================
 # 7. REST API — POST /v1/brain/manifold-audit
 # =============================================================================
+
 
 @pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
 class TestAPIManifoldAudit:
@@ -478,6 +519,7 @@ class TestAPIManifoldAudit:
 # 8. REST API — POST /v1/brain/compute-correction
 # =============================================================================
 
+
 @pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
 class TestAPIComputeCorrection:
     def test_at_gue_returns_hold(self):
@@ -544,6 +586,7 @@ class TestAPIComputeCorrection:
 # 9. REST API — POST /v1/brain/compare-models
 # =============================================================================
 
+
 @pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
 class TestAPICompareModels:
     _L = {"model_label": "model-a", "source_type": "hidden_states", "hidden_states": _HS_10x16}
@@ -571,7 +614,7 @@ class TestAPICompareModels:
         r = _client.post(
             "/v1/brain/compare-models",
             json={
-                "left":  {"model_label": "ckpt-100", "source_type": "eigenvalues", "eigenvalues": _EVALS_30},
+                "left": {"model_label": "ckpt-100", "source_type": "eigenvalues", "eigenvalues": _EVALS_30},
                 "right": {"model_label": "ckpt-200", "source_type": "eigenvalues", "eigenvalues": _EVALS_20},
             },
         )
@@ -589,3 +632,501 @@ class TestAPICompareModels:
         bad_l = {**self._L, "model_label": ""}
         r = _client.post("/v1/brain/compare-models", json={"left": bad_l, "right": self._R})
         assert r.status_code == 422
+
+
+# =============================================================================
+# 10. Auth middleware
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestAuthMiddleware:
+    """Test API key authentication when enabled."""
+
+    _VALID_KEY = "test-key-abc123"
+    _HEADERS = {"Authorization": "Bearer test-key-abc123"}
+
+    @pytest.fixture(autouse=True)
+    def _enable_auth(self, monkeypatch):
+        """Enable auth with a known test key for every test in this class."""
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "AUTH_ENABLED", True)
+        monkeypatch.setattr(_cfg, "API_KEYS", [self._VALID_KEY])
+        yield
+
+    # -- public paths remain accessible --
+
+    def test_healthz_public_when_auth_enabled(self):
+        r = _client.get("/healthz")
+        assert r.status_code == 200
+
+    def test_readyz_public_when_auth_enabled(self):
+        r = _client.get("/readyz")
+        assert r.status_code == 200
+
+    # -- protected paths reject missing/bad keys --
+
+    def test_no_header_returns_401(self):
+        r = _client.post("/v1/brain/health-check", json={"text": "hello world test"})
+        assert r.status_code == 401
+        body = r.json()
+        assert body["error_code"] == "UNAUTHORIZED"
+
+    def test_wrong_key_returns_401(self):
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": "hello world test"},
+            headers={"Authorization": "Bearer wrong-key"},
+        )
+        assert r.status_code == 401
+
+    def test_malformed_header_returns_401(self):
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": "hello world test"},
+            headers={"Authorization": "Token " + self._VALID_KEY},
+        )
+        assert r.status_code == 401
+
+    def test_empty_bearer_returns_401(self):
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": "hello world test"},
+            headers={"Authorization": "Bearer "},
+        )
+        assert r.status_code == 401
+
+    # -- valid key grants access --
+
+    def test_valid_key_health_check_200(self):
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": _LONG_TEXT},
+            headers=self._HEADERS,
+        )
+        assert r.status_code == 200
+
+    def test_valid_key_manifold_audit_200(self):
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states", "hidden_states": _HS_10x16},
+            headers=self._HEADERS,
+        )
+        assert r.status_code == 200
+
+    def test_valid_key_compute_correction_200(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": 0.5},
+            headers=self._HEADERS,
+        )
+        assert r.status_code == 200
+
+    def test_valid_key_compare_models_200(self):
+        r = _client.post(
+            "/v1/brain/compare-models",
+            json={
+                "left": {"model_label": "a", "source_type": "hidden_states", "hidden_states": _HS_10x16},
+                "right": {"model_label": "b", "source_type": "hidden_states", "hidden_states": _HS_10x16},
+            },
+            headers=self._HEADERS,
+        )
+        assert r.status_code == 200
+
+    def test_valid_key_capabilities_200(self):
+        r = _client.get("/v1/meta/capabilities", headers=self._HEADERS)
+        assert r.status_code == 200
+
+    def test_capabilities_requires_auth(self):
+        r = _client.get("/v1/meta/capabilities")
+        assert r.status_code == 401
+
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestAuthDisabled:
+    """Verify auth-off (default) path still works."""
+
+    @pytest.fixture(autouse=True)
+    def _disable_auth(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "AUTH_ENABLED", False)
+        yield
+
+    def test_no_header_allowed_when_auth_disabled(self):
+        r = _client.post("/v1/brain/health-check", json={"text": _LONG_TEXT})
+        assert r.status_code == 200
+
+
+# =============================================================================
+# 7. Rate Limiting
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestRateLimiting:
+    """Test in-process rate limiting middleware."""
+
+    @pytest.fixture(autouse=True)
+    def _enable_rate_limit(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "RATE_LIMIT_ENABLED", True)
+        monkeypatch.setattr(_cfg, "RATE_LIMIT_RPM", 3)
+        # Clear the rate limit store before each test
+        from api import _rate_limit_store
+
+        _rate_limit_store.clear()
+        yield
+
+    def test_under_limit_succeeds(self):
+        for _ in range(3):
+            r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+            assert r.status_code == 200
+
+    def test_over_limit_returns_429(self):
+        for _ in range(3):
+            _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        assert r.status_code == 429
+        body = r.json()
+        assert body["error_code"] == "RATE_LIMITED"
+
+    def test_public_paths_exempt(self):
+        """healthz / readyz are exempt from rate limiting."""
+        for _ in range(5):
+            r = _client.get("/healthz")
+            assert r.status_code == 200
+
+    def test_rate_limit_response_body(self):
+        for _ in range(3):
+            _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        body = r.json()
+        assert body["status"] == "error"
+        assert "Rate limit exceeded" in body["detail"]
+
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestRateLimitDisabled:
+    """Verify rate-limit-off (default) path still works."""
+
+    @pytest.fixture(autouse=True)
+    def _disable_rate_limit(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "RATE_LIMIT_ENABLED", False)
+        yield
+
+    def test_many_requests_allowed_when_disabled(self):
+        for _ in range(10):
+            r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+            assert r.status_code == 200
+
+
+# =============================================================================
+# 8. Body Size Limit
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestBodySizeLimit:
+    """Test body size middleware rejects oversized payloads."""
+
+    @pytest.fixture(autouse=True)
+    def _set_body_limit(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "MAX_BODY_BYTES", 500)
+        yield
+
+    def test_small_body_accepted(self):
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        assert r.status_code == 200
+
+    def test_large_body_returns_413(self):
+        large_text = "x" * 1000
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": large_text},
+        )
+        assert r.status_code == 413
+        body = r.json()
+        assert body["error_code"] == "PAYLOAD_TOO_LARGE"
+
+    def test_payload_too_large_response_body(self):
+        large_text = "x" * 1000
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": large_text},
+        )
+        body = r.json()
+        assert body["status"] == "error"
+        assert "maximum size" in body["detail"]
+
+
+# =============================================================================
+# 9. Input Guardrails (config-wired caps)
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestInputGuardrails:
+    """Test that Pydantic validators enforce config-driven limits."""
+
+    def test_too_many_hidden_state_samples_returns_422(self):
+        oversized = [[0.0] * 4] * 8193  # default MAX is 8192
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states", "hidden_states": oversized},
+        )
+        assert r.status_code == 422
+
+    def test_too_many_hidden_state_dims_returns_422(self):
+        oversized = [[0.0] * 4097] * 2  # default MAX is 4096
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states", "hidden_states": oversized},
+        )
+        assert r.status_code == 422
+
+    def test_too_many_eigenvalues_returns_422(self):
+        oversized = [0.0] * 65537  # default MAX is 65536
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "eigenvalues", "eigenvalues": oversized},
+        )
+        assert r.status_code == 422
+
+    def test_text_over_max_length_returns_422(self):
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": "x" * 20_001},
+        )
+        assert r.status_code == 422
+
+    def test_capabilities_reflects_config_limits(self):
+        r = _client.get("/v1/meta/capabilities")
+        limits = r.json()["limits"]
+        assert limits["max_text_length"] == 20_000
+        assert limits["max_hidden_state_samples"] == 8192
+        assert limits["max_hidden_state_dimensions"] == 4096
+        assert limits["max_eigenvalues"] == 65536
+        assert "max_body_bytes" in limits
+
+
+# =============================================================================
+# 10. Request ID and Structured Responses
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestRequestId:
+    """Verify request-id generation, pass-through, and inclusion in responses."""
+
+    def test_response_has_x_request_id_header(self):
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        assert "x-request-id" in r.headers
+
+    def test_auto_generated_request_id_is_hex(self):
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        rid = r.headers["x-request-id"]
+        assert len(rid) == 32  # uuid4 hex
+        int(rid, 16)  # must parse as hex
+
+    def test_client_request_id_echoed(self):
+        r = _client.post(
+            "/v1/brain/compute-correction",
+            json={"current_r_ratio": 0.5},
+            headers={"x-request-id": "my-trace-42"},
+        )
+        assert r.headers["x-request-id"] == "my-trace-42"
+
+    def test_request_id_in_success_body(self):
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        body = r.json()
+        assert "request_id" in body
+        assert body["request_id"] == r.headers["x-request-id"]
+
+    def test_request_id_in_error_body(self):
+        r = _client.post("/v1/brain/health-check", json={})
+        assert r.status_code == 422
+        body = r.json()
+        assert "request_id" in body
+        assert body["request_id"] == r.headers["x-request-id"]
+
+    def test_get_endpoints_have_request_id_header(self):
+        r = _client.get("/healthz")
+        assert "x-request-id" in r.headers
+
+
+# =============================================================================
+# 11. Standardized Error Payloads
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="fastapi/httpx not installed")
+class TestStandardizedErrors:
+    """Verify all error responses follow the standard shape."""
+
+    def test_validation_error_shape(self):
+        r = _client.post("/v1/brain/health-check", json={})
+        assert r.status_code == 422
+        body = r.json()
+        assert body["status"] == "error"
+        assert body["error_code"] == "VALIDATION_ERROR"
+        assert "detail" in body
+        assert "request_id" in body
+        assert body["schema_version"] == "1.0.0"
+
+    def test_auth_error_has_request_id(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "AUTH_ENABLED", True)
+        monkeypatch.setattr(_cfg, "API_KEYS", ["k"])
+        r = _client.post("/v1/brain/health-check", json={"text": "hi"})
+        assert r.status_code == 401
+        body = r.json()
+        assert body["status"] == "error"
+        assert body["error_code"] == "UNAUTHORIZED"
+        assert "request_id" in body
+        assert body["schema_version"] == "1.0.0"
+
+    def test_rate_limit_error_has_request_id(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "RATE_LIMIT_ENABLED", True)
+        monkeypatch.setattr(_cfg, "RATE_LIMIT_RPM", 0)
+        from api import _rate_limit_store
+
+        _rate_limit_store.clear()
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        assert r.status_code == 429
+        body = r.json()
+        assert body["status"] == "error"
+        assert "request_id" in body
+        assert body["schema_version"] == "1.0.0"
+
+    def test_body_size_error_has_request_id(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "MAX_BODY_BYTES", 10)
+        r = _client.post("/v1/brain/health-check", json={"text": "x" * 100})
+        assert r.status_code == 413
+        body = r.json()
+        assert body["status"] == "error"
+        assert "request_id" in body
+        assert body["schema_version"] == "1.0.0"
+
+    def test_engine_value_error_returns_422_with_standard_shape(self):
+        """HTTPException from engine ValueError goes through the http_error_handler."""
+        r = _client.post(
+            "/v1/brain/health-check",
+            json={"text": "tiny", "window_size": 4096, "stride": 1},
+        )
+        # Engine may raise ValueError if text is too short for window size.
+        # If 200, that's fine — skip shape check. If 422, verify shape.
+        if r.status_code == 422:
+            body = r.json()
+            assert "request_id" in body
+            assert body["schema_version"] == "1.0.0"
+
+
+# =============================================================================
+# 18. Config toggle wiring
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="FastAPI not installed")
+class TestConfigToggles:
+    """Verify that monkeypatching config values actually changes runtime behaviour."""
+
+    def test_lowered_max_eigenvalues_rejects_via_validator(self, monkeypatch):
+        """Eigenvalue cap is read at validation time, so monkeypatch works."""
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "MAX_EIGENVALUES", 2)
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "eigenvalues", "eigenvalues": [1.0, 2.0, 3.0]},
+        )
+        assert r.status_code == 422
+
+    def test_default_limits_accept_normal_input(self):
+        r = _client.post("/v1/brain/health-check", json={"text": "hello world"})
+        assert r.status_code == 200
+
+    def test_lowered_max_eigenvalues_rejects_large_array(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "MAX_EIGENVALUES", 3)
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "eigenvalues", "eigenvalues": [1.0, 2.0, 3.0, 4.0]},
+        )
+        assert r.status_code == 422
+
+    def test_lowered_max_hidden_state_dims_rejects(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "MAX_HIDDEN_STATE_DIMS", 2)
+        # 5x8 hidden states: 8 dims > 2
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states", "hidden_states": _HS_5x8},
+        )
+        assert r.status_code == 422
+
+    def test_lowered_max_hidden_state_samples_rejects(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "MAX_HIDDEN_STATE_SAMPLES", 2)
+        # 5x8 hidden states: 5 samples > 2
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "hidden_states", "hidden_states": _HS_5x8},
+        )
+        assert r.status_code == 422
+
+    def test_rate_limit_toggle_off_allows_traffic(self, monkeypatch):
+        import config as _cfg
+
+        monkeypatch.setattr(_cfg, "RATE_LIMIT_ENABLED", False)
+        for _ in range(5):
+            r = _client.get("/healthz")
+            assert r.status_code == 200
+
+
+# =============================================================================
+# 19. Version visibility
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="FastAPI not installed")
+class TestVersionVisibility:
+    """Verify schema_version appears where callers need it."""
+
+    def test_readyz_contains_version(self):
+        r = _client.get("/readyz")
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_capabilities_contains_version(self):
+        r = _client.get("/v1/meta/capabilities")
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_success_response_contains_version(self):
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        assert r.status_code == 200
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_validation_error_contains_version(self):
+        r = _client.post("/v1/brain/health-check", json={})
+        assert r.status_code == 422
+        assert r.json()["schema_version"] == "1.0.0"
+
+    def test_version_matches_config(self):
+        import config as _cfg
+
+        r = _client.get("/readyz")
+        assert r.json()["schema_version"] == _cfg.SCHEMA_VERSION

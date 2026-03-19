@@ -1,14 +1,22 @@
 """
-Geometric Brain - Hidden State Hallucination Validation
-=======================================================
+Geometric Brain - Hidden State Validation Harness
+==================================================
+
+RESEARCH SCRIPT — not a runtime component.
 
 Bridge script: HuggingFace model -> hidden states -> manifold_audit()
 
-Tests whether eigenvalue spacing on ACTUAL hidden states can
-separate hallucinated from truthful text.
+Purpose: test whether eigenvalue spacing ratios computed from real
+hidden states can separate truthful from hallucinated text on TruthfulQA.
 
-Previous result (text proxy): AUROC = 0.567 (failed)
-This test: hidden states from real model inference
+Status:
+  - This script is functional but NO committed results exist in the repo.
+  - A prior text-proxy experiment reported AUROC = 0.567 (chance level).
+  - Running this script produces 'hidden_state_validation.json' which you
+    should evaluate before drawing any conclusions.
+
+Requirements: torch, transformers, datasets, scikit-learn, accelerate
+              (not included in requirements-ci.txt)
 
 Run in Colab:
   1. Upload spectral_engine.py to the Colab working directory
@@ -17,6 +25,10 @@ Run in Colab:
   4. !python bridge_validation.py
 
 Or run locally with a GPU.
+
+Interpretation: the AUROC produced is specific to the model and dataset
+used. A strong AUROC on one model does not generalize without further
+evidence. See README.md § Validation Status for context.
 
 TMRP: Gemini (original script) -> Claude (interface fixes + review)
 """

@@ -5,6 +5,12 @@ Standalone spectral health node for any AI agent.
 Plug this into Claude Desktop, any MCP-compatible client,
 or run as a remote server via streamable HTTP.
 
+Security note:
+  - stdio mode inherits trust from the host process (no network exposure).
+  - HTTP mode (--http) is network-accessible and has NO built-in auth.
+    Do not expose to the public internet without a reverse proxy or
+    network-level access control.
+
 Built through TMRP: Gemini (core math) + ChatGPT (schemas/architecture) + Claude (merge/server)
 (c) 2026 Aletheia Sovereign Systems - MIT License
 """
@@ -15,6 +21,7 @@ from typing import Any, List, Literal, Optional, cast
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+import config
 from spectral_engine import (
     compare_models,
     compute_correction,
@@ -25,7 +32,7 @@ from spectral_engine import (
 # Server
 mcp = FastMCP("geometric_brain_mcp")
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = config.SCHEMA_VERSION
 
 
 def _tool_annotations(title: str) -> Any:
@@ -48,6 +55,7 @@ def _tool_annotations(title: str) -> Any:
 
 # Tool 1: Health Check
 
+
 class HealthCheckInput(BaseModel):
     """Analyze raw text for spectral health indicators."""
 
@@ -56,7 +64,7 @@ class HealthCheckInput(BaseModel):
     text: str = Field(
         ...,
         min_length=1,
-        max_length=20_000,
+        max_length=config.MAX_TEXT_LENGTH,
         description="Raw input text to analyze",
     )
     window_size: int = Field(
@@ -70,6 +78,7 @@ class HealthCheckInput(BaseModel):
 
 
 # Tool 2: Manifold Audit
+
 
 class ManifoldAuditInput(BaseModel):
     """Full spectral manifold analysis from hidden states or eigenvalues."""
@@ -102,16 +111,17 @@ class ManifoldAuditInput(BaseModel):
 
         # Size guards
         if self.hidden_states:
-            if len(self.hidden_states) > 8192:
-                raise ValueError(f"Max 8192 samples, got {len(self.hidden_states)}")
-            if self.hidden_states and len(self.hidden_states[0]) > 4096:
-                raise ValueError(f"Max 4096 dimensions, got {len(self.hidden_states[0])}")
-        if self.eigenvalues and len(self.eigenvalues) > 65536:
-            raise ValueError(f"Max 65536 eigenvalues, got {len(self.eigenvalues)}")
+            if len(self.hidden_states) > config.MAX_HIDDEN_STATE_SAMPLES:
+                raise ValueError(f"Max {config.MAX_HIDDEN_STATE_SAMPLES} samples, got {len(self.hidden_states)}")
+            if self.hidden_states[0] and len(self.hidden_states[0]) > config.MAX_HIDDEN_STATE_DIMS:
+                raise ValueError(f"Max {config.MAX_HIDDEN_STATE_DIMS} dimensions, got {len(self.hidden_states[0])}")
+        if self.eigenvalues and len(self.eigenvalues) > config.MAX_EIGENVALUES:
+            raise ValueError(f"Max {config.MAX_EIGENVALUES} eigenvalues, got {len(self.eigenvalues)}")
         return self
 
 
 # Tool 3: Compute Correction
+
 
 class CorrectionInput(BaseModel):
     """Compute intervention signal to restore GUE rigidity."""
@@ -142,6 +152,7 @@ class CorrectionInput(BaseModel):
 
 
 # Tool 4: Compare Models
+
 
 class ModelSpecInput(BaseModel):
     """Spectral data for one model in a comparison."""
@@ -339,7 +350,7 @@ if __name__ == "__main__":
     # Default: stdio for local MCP clients (Claude Desktop, etc.)
     # Use --http for remote server mode.
     if "--http" in sys.argv:
-        port = 8000
+        port = config.PORT
         for i, arg in enumerate(sys.argv):
             if arg == "--port" and i + 1 < len(sys.argv):
                 port = int(sys.argv[i + 1])

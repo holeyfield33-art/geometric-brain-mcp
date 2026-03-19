@@ -115,10 +115,11 @@ curl -s -X POST http://localhost:8001/v1/brain/manifold-audit \
 curl -s -X POST http://localhost:8001/v1/brain/compute-correction \
   -H "Content-Type: application/json" \
   -d '{
-    "r_ratio": 0.51,
-    "target_r": 0.578,
+    "current_r_ratio": 0.51,
+    "target_r_ratio": 0.578,
     "gain": 1.0,
-    "clamp": 0.25
+    "clamp_output": true,
+    "max_magnitude": 1.0
   }'
 ```
 
@@ -129,15 +130,15 @@ curl -s -X POST http://localhost:8001/v1/brain/compare-models \
   -H "Content-Type: application/json" \
   -d '{
     "left": {
+      "model_label": "model_a",
       "source_type": "eigenvalues",
       "eigenvalues": [0.8, 1.0, 1.2, 1.5, 1.7]
     },
     "right": {
+      "model_label": "model_b",
       "source_type": "eigenvalues",
       "eigenvalues": [0.9, 1.2, 1.4, 1.6, 1.9]
-    },
-    "left_label": "model_a",
-    "right_label": "model_b"
+    }
   }'
 ```
 
@@ -155,12 +156,12 @@ print("health_check:", text_result["status"], text_result.get("r_ratio"))
 aud_result = manifold_audit(eigenvalues=[0.9, 1.1, 1.4, 1.8, 2.1])
 print("audit:", aud_result["status"], aud_result.get("spectral_health_score"))
 
-corr = compute_correction(r_ratio=0.52)
-print("correction:", corr["recommendation"], corr["delta"])
+corr = compute_correction(current_r_ratio=0.52)
+print("correction:", corr["recommended_action"], corr["delta"])
 
 cmp_result = compare_models(
-    left={"source_type": "eigenvalues", "eigenvalues": [1.0, 1.2, 1.5, 1.7]},
-    right={"source_type": "eigenvalues", "eigenvalues": [0.9, 1.1, 1.3, 1.6]},
+    left_eigenvalues=[1.0, 1.2, 1.5, 1.7],
+    right_eigenvalues=[0.9, 1.1, 1.3, 1.6],
 )
 print("compare:", cmp_result["healthier_model"], cmp_result["delta_health_score"])
 PY
@@ -188,13 +189,23 @@ python -m py_compile spectral_engine.py server.py api.py bridge_validation.py
 
 ## 7. Bridge Validation Script
 
-Use this when GPU/LLM dependencies are installed and available.
+**Research tool, not a runtime component.** This script tests whether eigenvalue spacing on real model hidden states can separate truthful from hallucinated text. It requires GPU-capable hardware and heavy dependencies (`torch`, `transformers`, `datasets`, `scikit-learn`) that are **not** included in `requirements-ci.txt`.
+
+No committed results exist in this repository. If you run the script and commit the output, that constitutes evidence for your specific model and dataset — not a general claim.
+
+### Prerequisites
+
+```bash
+pip install torch transformers datasets scikit-learn accelerate
+```
+
+### Run
 
 ```bash
 python bridge_validation.py
 ```
 
-Expected artifact:
+### Expected artifact
 
 ```bash
 ls -lh hidden_state_validation.json
@@ -216,28 +227,45 @@ cat render.yaml
 
 ## 9. Release Commands
 
-### Check status
+### Pre-release checklist
+
+Before every tagged release, run through these steps **in order**:
 
 ```bash
+# 1. Ensure working tree is clean
 git status
+
+# 2. Run linter and formatter checks
+ruff check .
+ruff format --check .
+
+# 3. Compile check all source files
+python -m py_compile spectral_engine.py server.py api.py config.py
+
+# 4. Run full test suite (must be 0 failures, 0 warnings)
+python -m pytest test_e2e.py -v
+
+# 5. Verify version strings are in sync
+python -c "import config; print('config:', config.SCHEMA_VERSION)"
+grep '^version' pyproject.toml
+# Both must show the same value.
 ```
 
-### Commit release changes
+### Version bump
+
+Update the version in **both** places (they must match):
+
+| File | Field |
+|------|-------|
+| `config.py` | `SCHEMA_VERSION` |
+| `pyproject.toml` | `[project] version` |
+
+### Tag and push
 
 ```bash
-git add README.md PACKAGE_DELIVERY.md
-git commit -m "docs: professional README and runtime delivery guide"
-```
-
-### Tag release
-
-```bash
-git tag -a v1.0.1 -m "v1.0.1 docs refresh"
-```
-
-### Push main and tags
-
-```bash
+git add -A
+git commit -m "release: vX.Y.Z"
+git tag -a vX.Y.Z -m "vX.Y.Z <summary>"
 git push origin main
 git push origin --tags
 ```

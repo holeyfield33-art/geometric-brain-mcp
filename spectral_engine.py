@@ -151,13 +151,11 @@ def manifold_audit(
     Computes the Gram matrix, extracts eigenvalues via eigh,
     and determines spectral regime (GUE vs Poisson).
     """
-    computed_eigenvalues = None
 
     if eigenvalues is not None:
         evals = np.array(eigenvalues, dtype=np.float64)
         _validate_finite(evals, "eigenvalues")
         evals = np.sort(evals)
-        computed_eigenvalues = evals
         sample_count = len(evals)
         feature_count = 0
 
@@ -192,7 +190,6 @@ def manifold_audit(
         G = np.dot(H, H.T)
         evals = np.linalg.eigvalsh(G)
         evals = np.sort(evals)
-        computed_eigenvalues = evals
 
     else:
         return {
@@ -311,14 +308,12 @@ def compute_correction(
     elif error > 0:
         direction = "increase_repulsion"
         action = (
-            f"Increase eigenvalue repulsion. Current <r>={current_r_ratio:.4f} "
-            f"is below target {target_r_ratio:.4f}."
+            f"Increase eigenvalue repulsion. Current <r>={current_r_ratio:.4f} is below target {target_r_ratio:.4f}."
         )
     else:
         direction = "decrease_repulsion"
         action = (
-            f"Decrease eigenvalue repulsion. Current <r>={current_r_ratio:.4f} "
-            f"is above target {target_r_ratio:.4f}."
+            f"Decrease eigenvalue repulsion. Current <r>={current_r_ratio:.4f} is above target {target_r_ratio:.4f}."
         )
 
     # Recommended sigma for heat kernel (k=1 invariant bridge)

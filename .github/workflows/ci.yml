@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: pip install -r requirements-ci.txt
+
+      - name: Compile check
+        run: python -m py_compile spectral_engine.py api.py server.py config.py
+
+      - name: Import check
+        run: |
+          python -c "import spectral_engine; print('spectral_engine OK')"
+          python -c "import config; print('config OK')"
+          python -c "from api import app; print('api OK')"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format check
+        run: ruff format --check .
+
+      - name: Tests
+        run: python -m pytest test_e2e.py -v

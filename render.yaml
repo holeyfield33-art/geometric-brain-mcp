@@ -2,8 +2,9 @@ services:
   - type: web
     name: geometric-brain
     runtime: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-ci.txt
     startCommand: python api.py
+    healthCheckPath: /healthz
     envVars:
       - key: PORT
         value: 10000
