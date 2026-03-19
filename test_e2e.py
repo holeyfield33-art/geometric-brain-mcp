@@ -13,6 +13,7 @@ Run with: pytest test_e2e.py -v
 import numpy as np
 import pytest
 
+import config
 from spectral_engine import (
     GUE_R,
     POISSON_R,
@@ -369,7 +370,7 @@ class TestAPIMeta:
 
     def test_readyz_has_schema_version(self):
         r = _client.get("/readyz")
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_capabilities_four_tools(self):
         r = _client.get("/v1/meta/capabilities")
@@ -412,7 +413,7 @@ class TestAPIHealthCheck:
 
     def test_schema_version_in_response(self):
         r = _client.post("/v1/brain/health-check", json={"text": _LONG_TEXT})
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_missing_text_returns_422(self):
         r = _client.post("/v1/brain/health-check", json={})
@@ -471,7 +472,7 @@ class TestAPIManifoldAudit:
             "/v1/brain/manifold-audit",
             json={"source_type": "hidden_states", "hidden_states": _HS_10x16},
         )
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_eigenvalues_excluded_by_default(self):
         r = _client.post(
@@ -543,7 +544,7 @@ class TestAPIComputeCorrection:
             "/v1/brain/compute-correction",
             json={"current_r_ratio": 0.5},
         )
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_r_ratio_above_1_returns_422(self):
         r = _client.post(
@@ -604,7 +605,7 @@ class TestAPICompareModels:
 
     def test_schema_version_in_response(self):
         r = _client.post("/v1/brain/compare-models", json={"left": self._L, "right": self._R})
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_healthier_model_key_present(self):
         r = _client.post("/v1/brain/compare-models", json={"left": self._L, "right": self._R})
@@ -978,7 +979,7 @@ class TestStandardizedErrors:
         assert body["error_code"] == "VALIDATION_ERROR"
         assert "detail" in body
         assert "request_id" in body
-        assert body["schema_version"] == "1.0.0"
+        assert body["schema_version"] == config.SCHEMA_VERSION
 
     def test_auth_error_has_request_id(self, monkeypatch):
         import config as _cfg
@@ -991,7 +992,7 @@ class TestStandardizedErrors:
         assert body["status"] == "error"
         assert body["error_code"] == "UNAUTHORIZED"
         assert "request_id" in body
-        assert body["schema_version"] == "1.0.0"
+        assert body["schema_version"] == config.SCHEMA_VERSION
 
     def test_rate_limit_error_has_request_id(self, monkeypatch):
         import config as _cfg
@@ -1006,7 +1007,7 @@ class TestStandardizedErrors:
         body = r.json()
         assert body["status"] == "error"
         assert "request_id" in body
-        assert body["schema_version"] == "1.0.0"
+        assert body["schema_version"] == config.SCHEMA_VERSION
 
     def test_body_size_error_has_request_id(self, monkeypatch):
         import config as _cfg
@@ -1017,7 +1018,7 @@ class TestStandardizedErrors:
         body = r.json()
         assert body["status"] == "error"
         assert "request_id" in body
-        assert body["schema_version"] == "1.0.0"
+        assert body["schema_version"] == config.SCHEMA_VERSION
 
     def test_engine_value_error_returns_422_with_standard_shape(self):
         """HTTPException from engine ValueError goes through the http_error_handler."""
@@ -1030,7 +1031,7 @@ class TestStandardizedErrors:
         if r.status_code == 422:
             body = r.json()
             assert "request_id" in body
-            assert body["schema_version"] == "1.0.0"
+            assert body["schema_version"] == config.SCHEMA_VERSION
 
 
 # =============================================================================
@@ -1109,21 +1110,21 @@ class TestVersionVisibility:
 
     def test_readyz_contains_version(self):
         r = _client.get("/readyz")
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_capabilities_contains_version(self):
         r = _client.get("/v1/meta/capabilities")
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_success_response_contains_version(self):
         r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
         assert r.status_code == 200
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_validation_error_contains_version(self):
         r = _client.post("/v1/brain/health-check", json={})
         assert r.status_code == 422
-        assert r.json()["schema_version"] == "1.0.0"
+        assert r.json()["schema_version"] == config.SCHEMA_VERSION
 
     def test_version_matches_config(self):
         import config as _cfg
