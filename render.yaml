@@ -2,6 +2,7 @@ services:
   - type: web
     name: geometric-brain
     runtime: python
+    pythonVersion: "3.11.12"
     buildCommand: pip install --upgrade pip && pip install -r requirements-ci.txt
     startCommand: python api.py
     healthCheckPath: /healthz
