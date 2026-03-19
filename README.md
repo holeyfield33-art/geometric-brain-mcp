@@ -78,7 +78,7 @@ All outputs — `r_ratio`, `spectral_health_score`, `regime`, `confidence` — d
 Not all endpoints carry equal analytical weight. The table below ranks them by how directly they access spectral structure.
 
 | Tier | Endpoint | Input | What it measures | Strength |
-|------|----------|-------|-----------------|----------|
+| ------ | ---------- | ------- | ----------------- | ---------- |
 | 1 — Direct | `manifold-audit` (hidden_states) | Model hidden states | True eigenvalue spacing from Gram matrix | Strongest — operates on actual latent geometry |
 | 1 — Direct | `manifold-audit` (eigenvalues) | Precomputed eigenvalues | Spacing ratio and regime from real spectrum | Strongest — skips Gram step, same analysis |
 | 2 — Derived | `compare-models` | Two sets of hidden states or eigenvalues | Side-by-side tier-1 audit | Strong — composes two direct analyses |
@@ -112,7 +112,7 @@ Accepts a 2D matrix of hidden-state vectors `[tokens × dimensions]`, computes t
 
 Accepts a precomputed list of eigenvalues and performs spectral analysis directly. Skips Gram matrix computation.
 
-**Function:** `manifold_audit(eigenvalues=[...])` 
+**Function:** `manifold_audit(eigenvalues=[...])`
 **Endpoint:** `POST /v1/brain/manifold-audit` with `"source_type": "eigenvalues"`
 
 **Best for:** research workflows, pre-processed spectra, custom eigenvalue pipelines.
@@ -399,7 +399,7 @@ All request and error events are emitted as structured log lines via Python `log
 
 Example request log:
 
-```
+```text
 {"time":"...","level":"INFO","logger":"geometric_brain","message":"request method=POST path=/v1/brain/health-check status=200 latency_ms=12.3 request_id=abc123 version=1.0.0"}
 ```
 
@@ -410,7 +410,7 @@ Error-level events: `unhandled_error` (includes `error_class`).
 
 On boot the API logs deployment-relevant config:
 
-```
+```text
 startup service=geometric-brain version=1.0.0 env=production host=0.0.0.0 port=10000 auth=True rate_limit=True log_level=WARNING
 ```
 
@@ -456,7 +456,7 @@ This repo includes a Render blueprint (`render.yaml`) for one-click deployment.
 3. Connect the repo. Render reads `render.yaml` and creates the service.
 4. Set production env vars in the Render dashboard:
 
-```
+```bash
 GB_AUTH_ENABLED=true
 GB_API_KEYS=<your-secret-key>
 GB_CORS_ORIGINS=https://your-app.example.com
@@ -466,12 +466,12 @@ GB_LOG_LEVEL=WARNING
 GB_ENVIRONMENT=production
 ```
 
-5. Deploy. Render runs `pip install -r requirements-ci.txt` and starts `python api.py`.
+1. Deploy. Render runs `pip install -r requirements-ci.txt` and starts `python api.py`.
 
 ### Health probes
 
 | Endpoint | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | `GET /healthz` | Liveness — returns `{"status":"ok"}` |
 | `GET /readyz` | Readiness — returns `{"status":"ready","schema_version":"..."}` |
 | `GET /v1/meta/capabilities` | API metadata (requires auth if enabled) |
@@ -493,6 +493,7 @@ The MCP server (`server.py`) runs over **stdio** by default, which inherits the 
 When running in **HTTP mode** (`--http`), the MCP server is network-accessible and does **not** enforce authentication. It should only be exposed on trusted networks or behind a reverse proxy that handles auth.
 
 **Trust assumptions:**
+
 - stdio mode: trusted local process, no network exposure
 - HTTP mode: no built-in auth — treat as an internal service or add a proxy
 - The MCP server does not share the REST API's auth middleware
@@ -501,7 +502,7 @@ When running in **HTTP mode** (`--http`), the MCP server is network-accessible a
 ## Operational Reference
 
 | Document | Contents |
-|----------|----------|
+| ---------- | ---------- |
 | [PACKAGE_DELIVERY.md](PACKAGE_DELIVERY.md) | Runtime commands for setup, run modes, API calls, testing, release |
 | [MVP_LAUNCH_CHECKLIST.md](MVP_LAUNCH_CHECKLIST.md) | Full launch runbook: pre-release, release, deploy, rollback, monitoring |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |

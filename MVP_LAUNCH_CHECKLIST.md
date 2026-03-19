@@ -81,7 +81,7 @@ python -m pytest test_e2e.py -v -k "TestInputGuardrails or TestBodySizeLimit or 
 Update version in **both** files to `1.1.0`:
 
 | File | Field | Command |
-|------|-------|---------|
+| ------ | ------- | --------- |
 | `config.py` | `SCHEMA_VERSION` | `sed -i 's/SCHEMA_VERSION: str = "1.0.0"/SCHEMA_VERSION: str = "1.1.0"/' config.py` |
 | `pyproject.toml` | `version` | `sed -i 's/version = "1.0.0"/version = "1.1.0"/' pyproject.toml` |
 
@@ -122,6 +122,7 @@ gh release create v1.1.0 \
 ```
 
 Or create manually at: `https://github.com/holeyfield33-art/geometric-brain-mcp/releases/new`
+
 - Tag: `v1.1.0`
 - Title: `v1.1.0 — Closed MVP`
 - Body: paste contents of `RELEASE_NOTES.md`
@@ -135,7 +136,7 @@ python -m build
 
 Expected output:
 
-```
+```text
 Successfully built geometric_brain_mcp-1.1.0.tar.gz and geometric_brain_mcp-1.1.0-py3-none-any.whl
 ```
 
@@ -194,7 +195,7 @@ python -c "import spectral_engine; import config; print(config.SCHEMA_VERSION)"
 
 In the Render dashboard for the `geometric-brain` service, set:
 
-```
+```bash
 GB_AUTH_ENABLED=true
 GB_API_KEYS=<your-production-api-key>
 GB_CORS_ORIGINS=https://your-app.example.com
@@ -311,7 +312,7 @@ Then trigger a Render redeploy.
 
 Set these environment variable overrides in Render:
 
-```
+```bash
 GB_AUTH_ENABLED=false
 GB_RATE_LIMIT_ENABLED=false
 GB_LOG_LEVEL=INFO
@@ -331,7 +332,7 @@ git push origin :refs/tags/v1.1.0
 Render logs are available in the dashboard. Key log events to watch:
 
 | Event | Level | Meaning |
-|-------|-------|---------|
+| ------- | ------- | --------- |
 | `startup service=geometric-brain ...` | INFO | Service booted with correct config |
 | `request method=POST path=/v1/brain/... status=200` | INFO | Normal traffic |
 | `auth_failed` | WARNING | Someone sent a bad/missing API key |
@@ -343,7 +344,7 @@ Render logs are available in the dashboard. Key log events to watch:
 ### 25. Common failure points
 
 | Symptom | Likely cause | Fix |
-|---------|-------------|-----|
+| --------- | ------------- | ----- |
 | 401 on all requests | `GB_AUTH_ENABLED=true` but `GB_API_KEYS` not set or wrong | Set correct keys in Render env vars |
 | 429 immediately | `GB_RATE_LIMIT_RPM` set too low | Increase RPM or disable rate limiting |
 | 500 on startup | Missing dependency | Check Render build logs; ensure `requirements-ci.txt` installs cleanly |
@@ -353,6 +354,7 @@ Render logs are available in the dashboard. Key log events to watch:
 ### 26. First 24 hours monitoring
 
 **Hour 0–1 (immediately after deploy):**
+
 - [ ] Startup banner appeared in logs with correct version and config
 - [ ] `GET /healthz` returns `{"status": "ok"}`
 - [ ] `GET /readyz` returns `schema_version: "1.1.0"`
@@ -361,18 +363,21 @@ Render logs are available in the dashboard. Key log events to watch:
 - [ ] Rate limit triggers at configured threshold
 
 **Hour 1–6:**
+
 - [ ] No `unhandled_error` (level=ERROR) events in logs
 - [ ] `auth_failed` events are from bots/scanners, not your own clients
 - [ ] Response latency < 100ms p95 (check Render metrics)
 - [ ] No 500 status codes in request logs
 
 **Hour 6–24:**
+
 - [ ] Rate limit store is not growing unbounded (in-memory, resets per window)
 - [ ] No repeated `validation_error` from the same client (indicates integration bug)
 - [ ] At least one successful call to each POST endpoint from intended client
 - [ ] Render free tier spin-down/spin-up cycle works (cold start < 30s)
 
 **Red flags requiring immediate action:**
+
 - Any `unhandled_error` → check stack trace in logs, hotfix or rollback
 - All requests returning 401 → `GB_API_KEYS` misconfigured in Render env vars
 - All requests returning 429 → `GB_RATE_LIMIT_RPM` too low or store not clearing
@@ -383,7 +388,7 @@ Render logs are available in the dashboard. Key log events to watch:
 ## Checklist summary
 
 | # | Step | Command / action | Expected |
-|---|------|-----------------|----------|
+| --- | ------ | ----------------- | ---------- |
 | 1 | Clean tree | `git status` | No unexpected changes |
 | 2 | Install | `pip install -r requirements-ci.txt` | Success |
 | 3 | Lint | `ruff check . && ruff format --check .` | All passed |
