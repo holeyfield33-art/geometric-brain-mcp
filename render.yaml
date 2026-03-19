@@ -2,7 +2,7 @@ services:
   - type: web
     name: geometric-brain
     runtime: python
-    buildCommand: pip install -r requirements-ci.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements-ci.txt
     startCommand: python api.py
     healthCheckPath: /healthz
     envVars:
