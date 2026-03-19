@@ -8,6 +8,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [1.1.0] — 2026-03-19
 
 ### Added
+
 - **Configuration layer** (`config.py`): all runtime settings driven by environment variables with sane defaults. Zero config required for local dev.
 - **API key authentication**: optional Bearer token auth on all non-public endpoints. Controlled by `GB_AUTH_ENABLED` and `GB_API_KEYS`.
 - **Rate limiting**: optional per-IP request throttling. Controlled by `GB_RATE_LIMIT_ENABLED` and `GB_RATE_LIMIT_RPM`.
@@ -28,6 +29,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **Launch artifacts**: CHANGELOG.md, RELEASE_NOTES.md, DEFERRED_WORK.md, MVP_LAUNCH_CHECKLIST.md.
 
 ### Changed
+
 - `api.py`: middleware chain (request_id → logging → body_size → rate_limit → auth → handler). All endpoint ValueError catches use `raise ... from None` (B904).
 - `server.py`: Pydantic schemas now read limits from `config.*`. SCHEMA_VERSION sourced from config.
 - `spectral_engine.py`: removed unused variable in `manifold_audit()` (F841).
@@ -37,6 +39,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `test_e2e.py`: import ordering fixed (I001), empty f-string fixed (F541).
 
 ### Fixed
+
 - B904: `raise HTTPException` in `except ValueError` blocks now uses `from None`.
 - F841: unused `computed_eigenvalues` variable removed from `spectral_engine.py`.
 - F541: empty f-string in test fixture replaced with plain string.
