@@ -1,6 +1,6 @@
 # MVP Launch Checklist
 
-Human-executable runbook for releasing Geometric Brain MCP v1.1.0.
+Human-executable runbook for releasing Geometric Brain MCP v1.1.1.
 Every command is copy-pasteable. No guessing required.
 
 ---
@@ -48,7 +48,7 @@ python -m pytest test_e2e.py -v
 ```bash
 python -c "import config; print('config:', config.SCHEMA_VERSION)"
 grep '^version' pyproject.toml
-# Both must show "1.1.0".
+# Both must show "1.1.1".
 ```
 
 ### 7. Verify auth works
@@ -78,12 +78,12 @@ python -m pytest test_e2e.py -v -k "TestInputGuardrails or TestBodySizeLimit or 
 
 ### 10. Version bump
 
-Update version in **both** files to `1.1.0`:
+Update version in **both** files to `1.1.1`:
 
 | File | Field | Command |
 | ------ | ------- | --------- |
-| `config.py` | `SCHEMA_VERSION` | `sed -i 's/SCHEMA_VERSION: str = "1.0.0"/SCHEMA_VERSION: str = "1.1.0"/' config.py` |
-| `pyproject.toml` | `version` | `sed -i 's/version = "1.0.0"/version = "1.1.0"/' pyproject.toml` |
+| `config.py` | `SCHEMA_VERSION` | `sed -i 's/SCHEMA_VERSION: str = "1.1.0"/SCHEMA_VERSION: str = "1.1.1"/' config.py` |
+| `pyproject.toml` | `version` | `sed -i 's/version = "1.1.0"/version = "1.1.1"/' pyproject.toml` |
 
 Verify:
 
@@ -96,35 +96,35 @@ grep '^version' pyproject.toml
 
 ```bash
 git add -A
-git commit -m "release: v1.1.0 — config, auth, rate limiting, logging, CI, 138 tests"
-git tag -a v1.1.0 -m "v1.1.0 closed MVP"
+git commit -m "release: v1.1.1 — pin Python 3.12.8, uvicorn start command, deployment fixes"
+git tag -a v1.1.1 -m "v1.1.1 deployment fix"
 ```
 
 ### 12. Push
 
 ```bash
 git push origin main
-git push origin v1.1.0
+git push origin v1.1.1
 ```
 
 ### 13. Verify CI passes
 
 Go to: `https://github.com/holeyfield33-art/geometric-brain-mcp/actions`
 
-Wait for the CI workflow to complete on the `v1.1.0` push. Both Python 3.11 and 3.12 jobs must be green.
+Wait for the CI workflow to complete on the `v1.1.1` push. Both Python 3.11 and 3.12 jobs must be green.
 
 ### 14. Create GitHub release
 
 ```bash
-gh release create v1.1.0 \
-  --title "v1.1.0 — Closed MVP" \
+gh release create v1.1.1 \
+  --title "v1.1.1 — Deployment Fix" \
   --notes-file RELEASE_NOTES.md
 ```
 
 Or create manually at: `https://github.com/holeyfield33-art/geometric-brain-mcp/releases/new`
 
-- Tag: `v1.1.0`
-- Title: `v1.1.0 — Closed MVP`
+- Tag: `v1.1.1`
+- Title: `v1.1.1 — Deployment Fix`
 - Body: paste contents of `RELEASE_NOTES.md`
 
 ### 15. Build package
@@ -137,15 +137,15 @@ python -m build
 Expected output:
 
 ```text
-Successfully built geometric_brain_mcp-1.1.0.tar.gz and geometric_brain_mcp-1.1.0-py3-none-any.whl
+Successfully built geometric_brain_mcp-1.1.1.tar.gz and geometric_brain_mcp-1.1.1-py3-none-any.whl
 ```
 
 Verify artifacts:
 
 ```bash
 ls dist/
-# geometric_brain_mcp-1.1.0.tar.gz
-# geometric_brain_mcp-1.1.0-py3-none-any.whl
+# geometric_brain_mcp-1.1.1.tar.gz
+# geometric_brain_mcp-1.1.1-py3-none-any.whl
 ```
 
 ### 16. Validate package
@@ -166,7 +166,7 @@ python -m twine upload --repository testpypi dist/*
 # Or use ~/.pypirc with [testpypi] section.
 ```
 
-Verify on TestPyPI: `https://test.pypi.org/project/geometric-brain-mcp/1.1.0/`
+Verify on TestPyPI: `https://test.pypi.org/project/geometric-brain-mcp/1.1.1/`
 
 **Production PyPI:**
 
@@ -177,14 +177,14 @@ python -m twine upload dist/*
 # Or use ~/.pypirc with [pypi] section.
 ```
 
-Verify on PyPI: `https://pypi.org/project/geometric-brain-mcp/1.1.0/`
+Verify on PyPI: `https://pypi.org/project/geometric-brain-mcp/1.1.1/`
 
 ### 18. Verify install from PyPI
 
 ```bash
-pip install geometric-brain-mcp==1.1.0
+pip install geometric-brain-mcp==1.1.1
 python -c "import spectral_engine; import config; print(config.SCHEMA_VERSION)"
-# Expected: 1.1.0
+# Expected: 1.1.1
 ```
 
 ---
@@ -214,7 +214,7 @@ Render auto-deploys on push to main (if configured), or trigger a manual deploy 
 Startup command (from `render.yaml`):
 
 ```bash
-python api.py
+uvicorn api:app --host 0.0.0.0 --port $PORT
 ```
 
 ### 21. Deployment smoke tests
@@ -230,7 +230,7 @@ curl -sf "$RENDER_URL/healthz" && echo " OK"
 
 # Readiness probe
 curl -sf "$RENDER_URL/readyz" && echo " OK"
-# Expected: {"status":"ready","schema_version":"1.1.0"}
+# Expected: {"status":"ready","schema_version":"1.1.1"}
 
 # Capabilities (requires auth if enabled)
 curl -sf "$RENDER_URL/v1/meta/capabilities" \
@@ -289,7 +289,7 @@ curl -sf -X POST "$RENDER_URL/v1/brain/compare-models" \
 # Expected: 200 with healthier_model, delta_health_score
 ```
 
-**Pass criteria:** all 4 POST endpoints return 200, auth rejection returns 401, rate limit triggers at expected threshold. schema_version in all responses must be "1.1.0".
+**Pass criteria:** all 4 POST endpoints return 200, auth rejection returns 401, rate limit triggers at expected threshold. schema_version in all responses must be "1.1.1".
 
 ---
 
@@ -323,8 +323,8 @@ This returns the service to pre-hardening behavior without reverting code.
 **Option C — Revert the tag only:**
 
 ```bash
-git tag -d v1.1.0
-git push origin :refs/tags/v1.1.0
+git tag -d v1.1.1
+git push origin :refs/tags/v1.1.1
 ```
 
 ### 24. Logs to inspect
@@ -357,7 +357,7 @@ Render logs are available in the dashboard. Key log events to watch:
 
 - [ ] Startup banner appeared in logs with correct version and config
 - [ ] `GET /healthz` returns `{"status": "ok"}`
-- [ ] `GET /readyz` returns `schema_version: "1.1.0"`
+- [ ] `GET /readyz` returns `schema_version: "1.1.1"`
 - [ ] All 4 POST endpoints return 200 with valid auth
 - [ ] Auth rejection (no key) returns 401
 - [ ] Rate limit triggers at configured threshold
@@ -394,17 +394,17 @@ Render logs are available in the dashboard. Key log events to watch:
 | 3 | Lint | `ruff check . && ruff format --check .` | All passed |
 | 4 | Compile | `python -m py_compile ...` | Silent |
 | 5 | Test | `python -m pytest test_e2e.py -v` | 138 passed |
-| 6 | Version | Check config.py + pyproject.toml | Both 1.1.0 |
+| 6 | Version | Check config.py + pyproject.toml | Both 1.1.1 |
 | 7–9 | Auth/limits | Targeted pytest runs | All green |
 | 10 | Bump | sed commands | Both files updated |
-| 11 | Commit + tag | `git commit` + `git tag` | v1.1.0 |
+| 11 | Commit + tag | `git commit` + `git tag` | v1.1.1 |
 | 12 | Push | `git push` (main + tag) | Remote updated |
 | 13 | CI | GitHub Actions | Green on 3.11 + 3.12 |
 | 14 | GitHub release | `gh release create` | Published |
 | 15 | Build package | `python -m build` | .tar.gz + .whl |
 | 16 | Validate package | `twine check dist/*` | PASSED |
 | 17 | Publish to PyPI | `twine upload dist/*` | Live on PyPI |
-| 18 | Verify install | `pip install geometric-brain-mcp==1.1.0` | Imports OK |
+| 18 | Verify install | `pip install geometric-brain-mcp==1.1.1` | Imports OK |
 | 19 | Env vars | Render dashboard | Production config set |
 | 20 | Deploy | Render | Service running |
 | 21–22 | Smoke tests | curl commands | All endpoints respond correctly |

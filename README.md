@@ -122,7 +122,7 @@ Accepts a precomputed list of eigenvalues and performs spectral analysis directl
 | Interface | Best for | Entry point |
 | --- | --- | --- |
 | MCP Server | MCP-compatible agents and orchestration runtimes | `python server.py` |
-| HTTP API | Service-to-service and language-agnostic clients | `python api.py` |
+| HTTP API | Service-to-service and language-agnostic clients | `uvicorn api:app --host 0.0.0.0 --port 8000` |
 | Python Module | Direct embedding in pipelines and research code | `import spectral_engine` |
 
 ## Tools / Endpoints
@@ -166,6 +166,12 @@ python server.py --http --host 0.0.0.0 --port 8000
 ```
 
 ### Start REST API
+
+```bash
+uvicorn api:app --host 0.0.0.0 --port 8000
+```
+
+Or via the built-in runner:
 
 ```bash
 python api.py
@@ -341,7 +347,7 @@ When a client exceeds the limit, the API returns `429`:
   "error_code": "RATE_LIMITED",
   "detail": "Rate limit exceeded. Max 60 requests per minute.",
   "request_id": "...",
-  "schema_version": "1.0.0"
+  "schema_version": "1.1.1"
 }
 ```
 
@@ -357,7 +363,7 @@ Requests larger than `GB_MAX_BODY_BYTES` (default 10 MB) are rejected before JSO
   "error_code": "PAYLOAD_TOO_LARGE",
   "detail": "Request body exceeds maximum size of 10485760 bytes.",
   "request_id": "...",
-  "schema_version": "1.0.0"
+  "schema_version": "1.1.1"
 }
 ```
 
@@ -400,7 +406,7 @@ All request and error events are emitted as structured log lines via Python `log
 Example request log:
 
 ```text
-{"time":"...","level":"INFO","logger":"geometric_brain","message":"request method=POST path=/v1/brain/health-check status=200 latency_ms=12.3 request_id=abc123 version=1.0.0"}
+{"time":"...","level":"INFO","logger":"geometric_brain","message":"request method=POST path=/v1/brain/health-check status=200 latency_ms=12.3 request_id=abc123 version=1.1.1"}
 ```
 
 Warning-level events: `auth_failed`, `rate_limited`, `payload_too_large`, `validation_error`, `http_error`.  
@@ -411,7 +417,7 @@ Error-level events: `unhandled_error` (includes `error_class`).
 On boot the API logs deployment-relevant config:
 
 ```text
-startup service=geometric-brain version=1.0.0 env=production host=0.0.0.0 port=10000 auth=True rate_limit=True log_level=WARNING
+startup service=geometric-brain version=1.1.1 env=production host=0.0.0.0 port=10000 auth=True rate_limit=True log_level=WARNING
 ```
 
 ### Request ID
@@ -432,7 +438,7 @@ All error responses follow a consistent shape:
   "error_code": "VALIDATION_ERROR",
   "detail": "...",
   "request_id": "abc123",
-  "schema_version": "1.0.0"
+  "schema_version": "1.1.1"
 }
 ```
 
@@ -466,7 +472,7 @@ GB_LOG_LEVEL=WARNING
 GB_ENVIRONMENT=production
 ```
 
-1. Deploy. Render runs `pip install -r requirements-ci.txt` and starts `python api.py`.
+1. Deploy. Render runs `pip install -r requirements-ci.txt` and starts `uvicorn api:app --host 0.0.0.0 --port $PORT`.
 
 ### Health probes
 

@@ -5,6 +5,19 @@ All notable changes to Geometric Brain MCP are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] — 2026-03-20
+
+### Fixed
+
+- **Render deployment crash**: pinned Python 3.12.8 via `.python-version` file and `PYTHON_VERSION` env var in `render.yaml`. Render defaults to Python 3.14, which breaks MCP/Pydantic.
+- **Start command**: changed Render start command from `python api.py` to `uvicorn api:app --host 0.0.0.0 --port $PORT` for proper production serving.
+- **Python version constraint**: tightened `requires-python` from `>=3.11` to `>=3.11,<3.14` in `pyproject.toml`.
+
+### Changed
+
+- `render.yaml`: removed `pythonVersion: "3.11.12"` (deprecated), added `PYTHON_VERSION: "3.12.8"` env var.
+- Added `.python-version` file (3.12.8) for Render and other tooling.
+
 ## [1.1.0] — 2026-03-19
 
 ### Added

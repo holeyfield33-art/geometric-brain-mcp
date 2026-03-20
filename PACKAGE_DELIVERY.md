@@ -41,10 +41,16 @@ python server.py --http --host 0.0.0.0 --port 8000
 ### REST API sidecar
 
 ```bash
+uvicorn api:app --host 0.0.0.0 --port 8000
+```
+
+Or via the built-in runner:
+
+```bash
 python api.py
 ```
 
-### REST API sidecar with uvicorn
+### REST API sidecar with uvicorn (custom port)
 
 ```bash
 uvicorn api:app --host 0.0.0.0 --port 8001
@@ -216,7 +222,7 @@ ls -lh hidden_state_validation.json
 ### Local parity check using render command style
 
 ```bash
-PORT=10000 python api.py
+PORT=10000 uvicorn api:app --host 0.0.0.0 --port 10000
 ```
 
 ### Render blueprint

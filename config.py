@@ -83,7 +83,7 @@ LOG_LEVEL: str = os.environ.get("GB_LOG_LEVEL", "INFO").upper()
 # Version / environment labels
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION: str = "1.1.0"
+SCHEMA_VERSION: str = "1.1.1"
 __version__: str = SCHEMA_VERSION  # convenience alias
 
 ENVIRONMENT: str = os.environ.get("GB_ENVIRONMENT", "development")
