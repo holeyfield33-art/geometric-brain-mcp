@@ -3,7 +3,7 @@ services:
     name: geometric-brain
     runtime: python
     buildCommand: pip install --upgrade pip && pip install -r requirements-ci.txt
-    startCommand: python api.py
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     envVars:
       - key: PORT
