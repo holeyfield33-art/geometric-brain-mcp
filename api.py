@@ -51,6 +51,7 @@ logger.propagate = False
 
 SCHEMA_VERSION = config.SCHEMA_VERSION
 
+mcp_server.settings.streamable_http_path = "/"
 mcp_app = mcp_server.streamable_http_app()
 
 
