@@ -12,6 +12,7 @@ Endpoints map 1:1 to MCP tools:
 (c) 2026 Aletheia Sovereign Systems - MIT License
 """
 
+import contextlib
 import logging
 import time
 import uuid
@@ -26,6 +27,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import config
+from server import mcp as mcp_server
 from spectral_engine import (
     compare_models,
     compute_correction,
@@ -49,6 +51,8 @@ logger.propagate = False
 
 SCHEMA_VERSION = config.SCHEMA_VERSION
 
+mcp_app = mcp_server.streamable_http_app()
+
 
 # ---------------------------------------------------------------------------
 # Lifespan — startup / shutdown events
@@ -57,17 +61,16 @@ SCHEMA_VERSION = config.SCHEMA_VERSION
 
 @asynccontextmanager
 async def _lifespan(application: FastAPI):
-    logger.info(
-        "startup service=geometric-brain version=%s env=%s host=%s port=%d auth=%s rate_limit=%s log_level=%s",
-        SCHEMA_VERSION,
-        config.ENVIRONMENT,
-        config.HOST,
-        config.PORT,
-        config.AUTH_ENABLED,
-        config.RATE_LIMIT_ENABLED,
-        config.LOG_LEVEL,
-    )
-    yield
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(mcp_server.session_manager.run())
+        logger.info(
+            "startup service=geometric-brain version=%s env=%s host=%s port=%d",
+            SCHEMA_VERSION,
+            config.ENVIRONMENT,
+            config.HOST,
+            config.PORT,
+        )
+        yield
 
 
 app = FastAPI(
@@ -76,6 +79,8 @@ app = FastAPI(
     description="Spectral rigidity analysis for transformer latent spaces. GUE health monitoring for any AI agent.",
     lifespan=_lifespan,
 )
+
+app.mount("/mcp", mcp_app)
 
 app.add_middleware(
     CORSMiddleware,
