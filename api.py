@@ -52,6 +52,7 @@ logger.propagate = False
 SCHEMA_VERSION = config.SCHEMA_VERSION
 
 mcp_server.settings.streamable_http_path = "/"
+mcp_server.settings.transport_security = None          # Render proxy handles host validation
 mcp_app = mcp_server.streamable_http_app()
 
 
