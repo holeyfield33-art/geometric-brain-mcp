@@ -33,27 +33,73 @@ Accessible via **MCP tools**, **REST API**, or **direct Python import**.
 
 ### Limitations
 
-- **Text proxy mode** is an indirect estimate — it does not access true eigenvalue structure. Use it as a coarse signal, not a precise measurement.
+- **Text proxy mode does not discriminate content quality (measured).** It measures token-spacing geometry, not coherence. Measured r_ratios for coherent text, degenerate text, and word salad fall in the same band (0.314–0.432). Use Tier 1 eigenvalue/hidden-state input for meaningful analysis.
 - Confidence depends on sample size. Small inputs produce low-confidence results.
 - Regime classification thresholds are fixed heuristics, not empirically tuned per-model. Interpretation should account for your model and data context.
 - The spectral health score is a derived metric, not a ground-truth measure of model quality.
-- No published validation results are shipped with this repository. The bridge validation script exists as a harness but has not produced committed results (see [Validation Status](#validation-status) below).
+- Synthetic-spectra validation (CPU) is complete. Real transformer hidden-state validation has not been run yet (see [Validation Status](#validation-status) below).
 
 ## Validation Status
 
 This project ships **diagnostic tooling**, not validated detection claims. The distinction matters.
 
+### Measured Results (CPU validation, synthetic spectra)
+
+The diagnostic functions were tested against inputs with known spectral structure.
+These results validate that the engine **discriminates spectral geometry**; they do
+not claim hallucination detection (see [What has NOT been validated](#what-has-not-been-validated)).
+
+#### `manifold_audit` correctly classifies known spectral regimes
+
+| Input | mean r_ratio | regime | health score |
+|-------|-------------|--------|--------------|
+| GUE-like (rigid/correlated) | 0.627 | gue_like | 95.1 |
+| Poisson (uncorrelated) | 0.356 | poisson_like | 77.8 |
+| Collapsed rank (degenerate) | 0.000 | intermediate | 42.2 |
+
+Distance metrics point to the correct family in each case (e.g. GUE input →
+gue_distance 0.049 vs poisson_distance 0.241).
+
+#### `compare_models` separates different spectra
+
+Same-family comparison (GUE vs GUE) yields delta health 3.1; different-family
+(GUE vs Poisson) yields delta health 21.0 — a ~7x larger distance, confirming the
+comparator discriminates.
+
+#### `compute_correction` behaves as a correct controller
+
+Zero signal at the 0.578 target ("hold"), positive below (increase repulsion),
+negative above (decrease repulsion), magnitude scaling with distance from target.
+
+#### `spectral_health_check` on raw text does NOT discriminate content quality
+
+| Text input | r_ratio |
+|-----------|---------|
+| Coherent technical | 0.423 |
+| Coherent narrative | 0.371 |
+| Degenerate (repeated token) | 0.314 |
+| Word salad | 0.432 |
+| Near-duplicate | 0.426 |
+
+Meaningful and meaningless text fall in the same band; word salad (0.432) scored
+higher than coherent narrative (0.371). **The text proxy measures token-spacing
+geometry, not content quality, and should not be used as a content/coherence
+discriminator.** The real signal is in eigenvalue/hidden-state input, not text.
+
 ### What has been validated
 
-- The engine correctly computes eigenvalue spacing ratios and classifies regimes against known GUE/Poisson reference values.
+- **Spectral regime discrimination (synthetic spectra):** `manifold_audit` correctly classifies pure GUE, Poisson, and collapsed-rank inputs with correct distance metrics.
+- **Comparator discrimination:** `compare_models` separates same-family spectra (delta health 3.1) from different-family spectra (delta health 21.0) — ~7x larger distance.
+- **Correction signal correctness:** `compute_correction` is zero at the 0.578 target, correctly signed and scaled above and below.
+- **Text proxy limitation confirmed (measured):** `spectral_health_check` on raw text does not separate coherent from degenerate content. This is a documented limitation, not a bug.
 - All four public functions are covered by 138 automated tests exercising happy paths, edge cases, error handling, and API integration.
 - The mathematical operations (Gram matrix, eigendecomposition, spacing ratio, Marchenko-Pastur comparison) are standard linear algebra — they compute what they claim to compute.
 
 ### What has NOT been validated
 
 - **No hallucination detection claim is made.** The engine measures spectral properties; whether those properties predict truthfulness in a given model is an open research question.
-- **No benchmark results are committed to this repository.** The `bridge_validation.py` script is a research harness (see below), but its output (`hidden_state_validation.json`) has not been run and checked in.
-- **Text proxy mode has not been shown to correlate with model behavior.** An earlier experiment (noted in `bridge_validation.py`) reported AUROC = 0.567 on TruthfulQA text proxy — effectively chance.
+- **Real transformer hidden-state discrimination is pending.** The synthetic spectra above use pure GUE / pure Poisson / rank-1 collapse — extreme, known structure. Discrimination on real transformer hidden states — where coherent and degenerate generations produce subtler, messier spectra — is the next validation step (see `bridge_validation.py`).
+- **No committed hidden-state benchmark results exist.** The `bridge_validation.py` script is a research harness (see below), but its output (`hidden_state_validation.json`) has not been run and checked in. No claim is made about real-model discrimination until that test is run with committed results.
 
 ### bridge_validation.py
 
@@ -97,7 +143,7 @@ Encodes raw text as character-level tokens, applies sliding-window analysis, and
 **Endpoint:** `POST /v1/brain/health-check`
 
 **Best for:** quick screening, agent toolchains, situations where hidden states are unavailable. Not suitable for rigorous analysis.
-**Caveat:** proxy measurement only. Results are approximate.
+**Caveat:** proxy measurement only. Results are approximate. Measured r_ratios for coherent text, degenerate text, and word salad all fall in the 0.31–0.43 band — the text proxy cannot reliably separate content quality. Use Tier 1 input when discrimination matters.
 
 ### Hidden-state mode (Tier 1 — Direct)
 

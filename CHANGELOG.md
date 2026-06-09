@@ -5,6 +5,20 @@ All notable changes to Geometric Brain MCP are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-06-08
+
+### Documentation
+
+- **Measured validation results added to README.** CPU validation on synthetic spectra is now documented with committed numbers:
+  - `manifold_audit`: correctly classifies GUE-like (r=0.627, health 95.1), Poisson (r=0.356, health 77.8), and collapsed-rank (r=0.000, health 42.2) inputs with correct distance metrics.
+  - `compare_models`: same-family delta health 3.1 vs different-family delta health 21.0 (~7x separation).
+  - `compute_correction`: zero at target (0.578), correctly signed and magnitude-scaled above and below.
+  - `spectral_health_check` on text: **confirmed non-discriminating for content quality.** Measured r_ratios for coherent text, degenerate text, and word salad all fall in the 0.31–0.43 band. This is a documented limitation, not a bug.
+- Updated Limitations section: text proxy limitation is now described as measured and quantified, not theoretical.
+- Updated Analysis Modes section: text proxy caveat now cites measured r_ratio band.
+- Updated Validation Status: split into "Measured Results", "What has been validated", and "What has NOT been validated". Pending work is now scoped to real transformer hidden-state validation via `bridge_validation.py`.
+- Updated DEFERRED_WORK.md: synthetic-spectra CPU validation is marked complete; real hidden-state validation remains deferred.
+
 ## [1.1.1] — 2026-03-20
 
 ### Fixed

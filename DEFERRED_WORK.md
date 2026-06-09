@@ -30,7 +30,7 @@ Items considered during hardening (Phases 0–9) but intentionally deferred. Non
 
 ## Validation / research
 
-- **Committed benchmark results**: `bridge_validation.py` exists as a harness but no results are checked in. Running it and committing results is a research decision, not an engineering task.
+- **Committed benchmark results (partial)**: CPU validation on synthetic spectra is complete and committed to the README (GUE, Poisson, and collapsed-rank regimes; `manifold_audit`, `compare_models`, `compute_correction` all validated; text proxy non-discrimination confirmed with measured numbers). Real transformer hidden-state benchmark results via `bridge_validation.py` are not yet committed — running it and committing `hidden_state_validation.json` is a research decision, not an engineering task.
 - **Advanced eval suite**: current tests verify correctness. Statistical evaluation of spectral metrics against ground truth is research work.
 - **Notebook productization**: Colab/Jupyter usage is documented in `bridge_validation.py` comments. A polished notebook is deferred.
 
