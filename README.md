@@ -8,17 +8,20 @@ Accessible via **MCP tools**, **REST API**, or **direct Python import**.
 
 ## Current Scope
 
+See [MEASURED_BEHAVIOR.md](MEASURED_BEHAVIOR.md) for live-server evidence and [UNDERSTANDING_THE_VALUES.md](UNDERSTANDING_THE_VALUES.md) for what each returned value means and how to use it.
+
 ### What it does
 
-- Estimates eigenvalue spacing ratio (`<r>`) from text, hidden states, or raw eigenvalue spectra
-- Classifies spectral regime: GUE-like (rigid/coherent), Poisson-like (uncorrelated), or intermediate
-- Computes a spectral health score (0–100) and confidence estimate
+- Estimates eigenvalue spacing ratio (`<r>`) from hidden states or raw eigenvalue spectra (primary, validated paths)
+- Estimates `<r>` from raw text via a token-spacing proxy — **this path measures character-level geometry only, not content quality** (measured live: word salad scored higher than coherent prose; see MEASURED_BEHAVIOR.md)
+- Classifies spectral regime: GUE-like (rigid spectrum), Poisson-like (uncorrelated), or intermediate
+- Computes a spectral health score (0–100) — a structural descriptor of eigenvalue geometry, not a content-quality or correctness verdict
 - Generates bounded correction signals with direction and magnitude
 - Compares two models/checkpoints/layers side-by-side on spectral health
 
 ### What it does not do
 
-- It does not guarantee detection of hallucination or factual errors
+- Does not measure reasoning coherence, content quality, or detect hallucination — measured live, the text proxy scores semantically meaningless text as healthy. Trust the raw spectral measurements, not interpretive labels (`regime`/`drift_warning`), as quality signals
 - It does not access model internals at runtime (you provide the data)
 - It does not serve as a complete observability platform, dashboard, or alerting system
 - It does not fine-tune, train, or modify models
@@ -33,7 +36,7 @@ Accessible via **MCP tools**, **REST API**, or **direct Python import**.
 
 ### Limitations
 
-- **Text proxy mode** is an indirect estimate — it does not access true eigenvalue structure. Use it as a coarse signal, not a precise measurement.
+- **Text proxy mode** is an indirect estimate — it does not access true eigenvalue structure and does not track content quality. Measured live, the proxy scored word salad (87.9) higher than coherent prose (85.4). Use it only as a coarse structural signal, not a quality measurement.
 - Confidence depends on sample size. Small inputs produce low-confidence results.
 - Regime classification thresholds are fixed heuristics, not empirically tuned per-model. Interpretation should account for your model and data context.
 - The spectral health score is a derived metric, not a ground-truth measure of model quality.
@@ -131,9 +134,13 @@ Accepts a precomputed list of eigenvalues and performs spectral analysis directl
 
 Text proxy analysis. Returns `status`, `r_ratio`, `shi_score`, `regime`, `drift_warning`, `confidence`, `windows_analyzed`, `spacing_count`.
 
+**Note on interpretive labels:** `regime` and `drift_warning` are unreliable on real varied text — measured live, coherent technical prose was tagged `poisson_like` with `drift_warning: true`. Prefer the raw values (`r_ratio`, `shi_score`) for relative comparison; do not treat the labels as quality verdicts.
+
 ### `brain_manifold_audit`
 
 Full spectral audit from hidden states or eigenvalues. Returns `spectral_health_score`, `mean_r_ratio`, `variance_r_ratio`, `spectral_regime`, `lambda_2`, `zeta_score`, `gue_distance`, `poisson_distance`, `confidence`, `summary`.
+
+**Trustworthy outputs:** `r_ratio`, `gue_distance`, `poisson_distance`, and `lambda_2` are the reliable raw signals. `spectral_regime` is a coarse threshold-based label — treat as approximate. `spectral_health_score` is a structural descriptor; it is not validated as a predictor of content quality or model correctness.
 
 ### `brain_compute_correction`
 
