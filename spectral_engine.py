@@ -16,7 +16,8 @@ from typing import Optional
 import numpy as np
 
 # GUE and Poisson constants (locked)
-GUE_R = 0.578
+# GUE mean of the consecutive spacing ratio r = min/max (Atas et al. 2013, PRL 110 084101).
+GUE_R = 0.5996
 POISSON_R = 0.386
 MIN_SAMPLES_FOR_CONFIDENCE = 10
 MIN_EIGENVALUES = 3

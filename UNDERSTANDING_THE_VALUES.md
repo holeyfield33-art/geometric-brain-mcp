@@ -13,7 +13,7 @@ of these eigenvalues is the "spectral structure" everything here measures.
 **Spacing ratio `<r>` (`r_ratio`, `mean_r_ratio`)** — the average ratio between
 consecutive gaps in the sorted eigenvalue spectrum. It characterizes how the
 eigenvalues are *distributed*:
-- `<r> ≈ 0.578` → GUE-like: eigenvalues "repel" each other, evenly spread (rigid spectrum).
+- `<r> ≈ 0.5996` → GUE-like: eigenvalues "repel" each other, evenly spread (rigid spectrum).
 - `<r> ≈ 0.386` → Poisson-like: eigenvalues fall independently, clumpy spacing.
 - Other values → intermediate / non-standard structure.
 - **What it's good for:** comparing the spectral structure of two matrices, or
@@ -58,7 +58,7 @@ measurement, driven mainly by sample count (number of spacings analyzed). Higher
 more eigenvalues/tokens. Indicates measurement stability, not result correctness.
 
 **Intervention signal / delta / recommended_sigma** (from `compute_correction`) —
-given a current `<r>` and a target (default 0.578), the recommended adjustment
+given a current `<r>` and a target (default 0.5996), the recommended adjustment
 direction and magnitude to push the spectrum toward the target. **Good for:** driving
 a control loop that nudges a spectrum toward GUE rigidity. Validated as a correct
 controller (right sign, scales with distance). Whether reaching the target *improves a
@@ -80,5 +80,5 @@ real model* is a separate, unvalidated question.
   SHI is low — text content quality does not track these values (measured live).
 - **Not** that an absolute regime label or `drift_warning` is a quality verdict —
   both are unreliable on real input.
-- **Not** that pushing `<r>` to 0.578 improves model behavior — the controller works,
+- **Not** that pushing `<r>` to 0.5996 improves model behavior — the controller works,
   but the *benefit* of reaching the target is unvalidated.

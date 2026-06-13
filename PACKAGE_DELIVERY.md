@@ -122,7 +122,7 @@ curl -s -X POST http://localhost:8001/v1/brain/compute-correction \
   -H "Content-Type: application/json" \
   -d '{
     "current_r_ratio": 0.51,
-    "target_r_ratio": 0.578,
+    "target_r_ratio": 0.5996,
     "gain": 1.0,
     "clamp_output": true,
     "max_magnitude": 1.0

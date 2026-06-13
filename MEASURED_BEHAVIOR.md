@@ -58,11 +58,11 @@ also separated synthetic GUE-like vs Poisson vs collapsed-rank spectra cleanly.)
 
 ## 3. brain_compute_correction — works as a controller
 
-Input `current_r_ratio = 0.42`, default target 0.578:
+Input `current_r_ratio = 0.42`, default target 0.5996:
 
 ```
-delta: +0.496   direction: increase_repulsion   recommended_sigma: 1.158
-action: "Increase eigenvalue repulsion. Current <r>=0.4200 is below target 0.5780."
+delta: +0.564   direction: increase_repulsion   recommended_sigma: 1.180
+action: "Increase eigenvalue repulsion. Current <r>=0.4200 is below target 0.5996."
 ```
 
 Correct sign (below target → increase), sensible magnitude and recommended sigma.

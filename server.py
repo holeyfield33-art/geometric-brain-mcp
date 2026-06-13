@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import config
 from spectral_engine import (
+    GUE_R,
     compare_models,
     compute_correction,
     manifold_audit,
@@ -135,10 +136,10 @@ class CorrectionInput(BaseModel):
         description="Current measured spacing ratio <r>",
     )
     target_r_ratio: float = Field(
-        default=0.578,
+        default=GUE_R,
         ge=0.0,
         le=1.0,
-        description="Target spacing ratio (default: GUE attractor 0.578)",
+        description=f"Target spacing ratio (default: GUE attractor {GUE_R})",
     )
     gain: float = Field(default=1.0, ge=0.0, le=10.0, description="Correction gain multiplier")
     clamp_output: bool = Field(default=True, description="Clamp intervention signal magnitude")
@@ -189,7 +190,7 @@ async def brain_health_check(params: HealthCheckInput) -> str:
     """Analyze text for spectral health using GUE spacing ratio.
 
     Performs sliding-window analysis on input text to estimate the
-    eigenvalue spacing ratio <r>. Values near 0.578 indicate GUE-like
+    eigenvalue spacing ratio <r>. Values near 0.5996 indicate GUE-like
     spectral rigidity (coherent reasoning). Values near 0.386 indicate
     Poisson-like spacing (context decoherence).
 
@@ -268,7 +269,7 @@ async def brain_manifold_audit(params: ManifoldAuditInput) -> str:
 async def brain_compute_correction(params: CorrectionInput) -> str:
     """Compute intervention signal to restore GUE spectral rigidity.
 
-    Given the current measured spacing ratio and target (default 0.578),
+    Given the current measured spacing ratio and target (default 0.5996),
     returns the correction delta, recommended sigma adjustment for the
     heat kernel, intervention direction, and a human-readable action.
 
