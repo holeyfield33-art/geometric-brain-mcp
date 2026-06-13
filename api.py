@@ -29,6 +29,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 import config
 from server import mcp as mcp_server
 from spectral_engine import (
+    GUE_R,
+    POISSON_R,
     compare_models,
     compute_correction,
     manifold_audit,
@@ -358,7 +360,7 @@ class ManifoldAuditRequest(BaseModel):
 class CorrectionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     current_r_ratio: float = Field(..., ge=0.0, le=1.0)
-    target_r_ratio: float = Field(default=0.578, ge=0.0, le=1.0)
+    target_r_ratio: float = Field(default=GUE_R, ge=0.0, le=1.0)
     gain: float = Field(default=1.0, ge=0.0, le=10.0)
     clamp_output: bool = True
     max_magnitude: float = Field(default=1.0, gt=0.0, le=100.0)
@@ -403,8 +405,8 @@ async def capabilities():
             "brain_compare_models",
         ],
         "constants": {
-            "gue_r": 0.578,
-            "poisson_r": 0.386,
+            "gue_r": GUE_R,
+            "poisson_r": POISSON_R,
         },
         "limits": {
             "max_text_length": config.MAX_TEXT_LENGTH,

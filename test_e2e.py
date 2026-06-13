@@ -387,7 +387,7 @@ class TestAPIMeta:
 
     def test_capabilities_gue_constant(self):
         r = _client.get("/v1/meta/capabilities")
-        assert r.json()["constants"]["gue_r"] == pytest.approx(0.578)
+        assert r.json()["constants"]["gue_r"] == pytest.approx(0.5996)
 
     def test_capabilities_poisson_constant(self):
         r = _client.get("/v1/meta/capabilities")

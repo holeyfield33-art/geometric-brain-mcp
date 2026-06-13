@@ -240,7 +240,7 @@ curl -s -X POST http://localhost:8000/v1/brain/compare-models \
 
 | Constant | Value | Meaning |
 | --- | --- | --- |
-| `GUE_R` | 0.578 | Target spacing ratio — GUE-like spectral rigidity |
+| `GUE_R` | 0.5996 | Target spacing ratio — GUE-like spectral rigidity (Atas et al. 2013) |
 | `POISSON_R` | 0.386 | Baseline spacing ratio — uncorrelated/Poisson-like |
 
 Interpretation depends on your model, data, and operating context. These constants define classification thresholds, not guarantees.
