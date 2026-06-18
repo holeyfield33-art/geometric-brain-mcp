@@ -10,6 +10,9 @@ Coverage:
 Run with: pytest test_e2e.py -v
 """
 
+import asyncio
+import json as _json
+
 import numpy as np
 import pytest
 
@@ -1131,3 +1134,270 @@ class TestVersionVisibility:
 
         r = _client.get("/readyz")
         assert r.json()["schema_version"] == _cfg.SCHEMA_VERSION
+
+
+# =============================================================================
+# 20. Spectral engine uncovered branches
+# =============================================================================
+
+
+class TestSpectralEngineEdgeCases:
+    """Cover the remaining branches in spectral_engine.py."""
+
+    def test_no_spacings_constant_text(self):
+        """All-identical chars → diffs all zero → no valid ratios → NO_SPACINGS."""
+        r = spectral_health_check("a" * 10)
+        assert r["status"] == "error"
+        assert r["error_code"] == "NO_SPACINGS"
+
+    def test_gue_like_regime_and_ok_status(self):
+        """Text with alternating +7/+12 char-code steps → avg_r ≈ 0.583 → gue_like + ok."""
+        # Build a monotonically-increasing codepoint sequence so no wrap-around distorts diffs.
+        steps = [7, 12] * 150
+        vals = [100]
+        for s in steps:
+            vals.append(vals[-1] + s)
+        text = "".join(chr(v) for v in vals)
+        r = spectral_health_check(text)
+        assert r["regime"] == "gue_like"
+        assert r["status"] == "ok"
+
+    def test_manifold_audit_invalid_shape_1d(self):
+        """1-D hidden_states array → INVALID_SHAPE error."""
+        r = manifold_audit(hidden_states=[1.0, 2.0, 3.0, 4.0])
+        assert r["status"] == "error"
+        assert r["error_code"] == "INVALID_SHAPE"
+
+    def test_manifold_audit_rank_deficient(self):
+        """Identical rows → zero Gram matrix → no significant eigenvalues → RANK_DEFICIENT."""
+        identical_rows = [[1.0, 2.0, 3.0, 4.0]] * 5
+        r = manifold_audit(hidden_states=identical_rows)
+        assert r["status"] == "warning"
+        assert r["error_code"] == "RANK_DEFICIENT"
+
+    def test_manifold_audit_no_gaps_equal_eigenvalues(self):
+        """Equal eigenvalues → all diffs zero → no valid spacing ratios → NO_GAPS."""
+        r = manifold_audit(eigenvalues=[1.0, 1.0, 1.0])
+        assert r["status"] == "warning"
+        assert r["error_code"] == "NO_GAPS"
+
+    def test_compare_models_imbalance_warning(self):
+        """Large vs tiny eigenvalue arrays → spacing count ratio > 5 → warnings list."""
+        # _EVALS_30 yields ~28 spacing ratios; a 3-value array yields 1
+        r = compare_models(left_eigenvalues=_EVALS_30, right_eigenvalues=[0.1, 0.5, 1.0])
+        assert r["status"] == "ok"
+        assert len(r["warnings"]) > 0
+        assert "imbalance" in r["warnings"][0].lower()
+
+
+# =============================================================================
+# 21. API error-handler coverage
+# =============================================================================
+
+
+@pytest.mark.skipif(not _API, reason="FastAPI not installed")
+class TestAPIErrorHandlers:
+    """Cover the HTTPException and unhandled-exception handlers in api.py."""
+
+    def test_eigenvalues_source_type_without_data_returns_422(self):
+        """source_type='eigenvalues' with no eigenvalues field hits the model validator."""
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "eigenvalues"},
+        )
+        assert r.status_code == 422
+
+    def test_engine_value_error_returns_422_via_http_handler(self, monkeypatch):
+        """ValueError from engine → HTTPException(422) → http_error_handler."""
+        import api as _api
+
+        def _raise(*args, **kwargs):
+            raise ValueError("synthetic engine error")
+
+        monkeypatch.setattr(_api, "spectral_health_check", _raise)
+        r = _client.post("/v1/brain/health-check", json={"text": "hello world"})
+        assert r.status_code == 422
+        body = r.json()
+        assert body["error_code"] == "HTTP_ERROR"
+        assert "request_id" in body
+
+    def test_manifold_audit_value_error_via_http_handler(self, monkeypatch):
+        """ValueError from manifold_audit → HTTPException(422)."""
+        import api as _api
+
+        def _raise(*args, **kwargs):
+            raise ValueError("manifold error")
+
+        monkeypatch.setattr(_api, "manifold_audit", _raise)
+        r = _client.post(
+            "/v1/brain/manifold-audit",
+            json={"source_type": "eigenvalues", "eigenvalues": [1.0, 2.0, 3.0]},
+        )
+        assert r.status_code == 422
+
+    def test_compute_correction_value_error_via_http_handler(self, monkeypatch):
+        """ValueError from compute_correction → HTTPException(422)."""
+        import api as _api
+
+        def _raise(*args, **kwargs):
+            raise ValueError("correction error")
+
+        monkeypatch.setattr(_api, "compute_correction", _raise)
+        r = _client.post("/v1/brain/compute-correction", json={"current_r_ratio": 0.5})
+        assert r.status_code == 422
+
+    def test_compare_models_value_error_via_http_handler(self, monkeypatch):
+        """ValueError from compare_models → HTTPException(422)."""
+        import api as _api
+
+        def _raise(*args, **kwargs):
+            raise ValueError("compare error")
+
+        monkeypatch.setattr(_api, "compare_models", _raise)
+        r = _client.post(
+            "/v1/brain/compare-models",
+            json={
+                "left": {"model_label": "A", "source_type": "eigenvalues", "eigenvalues": [1.0, 2.0, 3.0]},
+                "right": {"model_label": "B", "source_type": "eigenvalues", "eigenvalues": [1.0, 2.0, 3.0]},
+            },
+        )
+        assert r.status_code == 422
+
+    def test_unhandled_exception_returns_500(self, monkeypatch):
+        """Non-ValueError from engine → unhandled_error_handler → 500."""
+        import api as _api
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("unexpected crash")
+
+        monkeypatch.setattr(_api, "spectral_health_check", _raise)
+        safe_client = TestClient(app, raise_server_exceptions=False)
+        r = safe_client.post("/v1/brain/health-check", json={"text": "hello world"})
+        assert r.status_code == 500
+        body = r.json()
+        assert body["error_code"] == "INTERNAL_ERROR"
+        assert "request_id" in body
+
+
+# =============================================================================
+# 22. MCP server tool functions
+# =============================================================================
+
+
+class TestMCPTools:
+    """Directly exercise the async MCP tool functions in server.py."""
+
+    def test_brain_health_check_returns_json(self):
+        from server import HealthCheckInput, brain_health_check
+
+        params = HealthCheckInput(text="The quick brown fox jumps over the lazy dog.")
+        result = asyncio.run(brain_health_check(params))
+        data = _json.loads(result)
+        assert data["status"] in ("ok", "warning", "error")
+        assert "schema_version" in data
+
+    def test_brain_health_check_with_request_id(self):
+        from server import HealthCheckInput, brain_health_check
+
+        params = HealthCheckInput(text="Hello world test sentence here.", request_id="test-rid-1")
+        result = asyncio.run(brain_health_check(params))
+        data = _json.loads(result)
+        assert data["request_id"] == "test-rid-1"
+
+    def test_brain_health_check_value_error_returns_error_json(self, monkeypatch):
+        import server as _srv
+
+        def _raise(*args, **kwargs):
+            raise ValueError("engine crash")
+
+        monkeypatch.setattr(_srv, "spectral_health_check", _raise)
+        from server import HealthCheckInput, brain_health_check
+
+        params = HealthCheckInput(text="hello world test text")
+        result = asyncio.run(brain_health_check(params))
+        data = _json.loads(result)
+        assert data["status"] == "error"
+        assert data["error_code"] == "VALIDATION_ERROR"
+
+    def test_brain_manifold_audit_eigenvalues(self):
+        from server import ManifoldAuditInput, brain_manifold_audit
+
+        params = ManifoldAuditInput(source_type="eigenvalues", eigenvalues=_EVALS_20)
+        result = asyncio.run(brain_manifold_audit(params))
+        data = _json.loads(result)
+        assert data["status"] in ("ok", "warning")
+        assert "schema_version" in data
+
+    def test_brain_manifold_audit_return_eigenvalues_flag(self):
+        from server import ManifoldAuditInput, brain_manifold_audit
+
+        params = ManifoldAuditInput(source_type="eigenvalues", eigenvalues=_EVALS_20, return_eigenvalues=True)
+        result = asyncio.run(brain_manifold_audit(params))
+        data = _json.loads(result)
+        assert "eigenvalues" in data
+
+    def test_brain_manifold_audit_value_error_returns_error_json(self, monkeypatch):
+        import server as _srv
+
+        def _raise(*args, **kwargs):
+            raise ValueError("nan detected")
+
+        monkeypatch.setattr(_srv, "manifold_audit", _raise)
+        from server import ManifoldAuditInput, brain_manifold_audit
+
+        params = ManifoldAuditInput(source_type="eigenvalues", eigenvalues=[1.0, 2.0, 3.0])
+        result = asyncio.run(brain_manifold_audit(params))
+        data = _json.loads(result)
+        assert data["status"] == "error"
+
+    def test_brain_compute_correction_returns_json(self):
+        from server import CorrectionInput, brain_compute_correction
+
+        params = CorrectionInput(current_r_ratio=0.45)
+        result = asyncio.run(brain_compute_correction(params))
+        data = _json.loads(result)
+        assert data["status"] == "ok"
+        assert "delta" in data
+
+    def test_brain_compute_correction_value_error_returns_error_json(self, monkeypatch):
+        import server as _srv
+
+        def _raise(*args, **kwargs):
+            raise ValueError("bad ratio")
+
+        monkeypatch.setattr(_srv, "compute_correction", _raise)
+        from server import CorrectionInput, brain_compute_correction
+
+        params = CorrectionInput(current_r_ratio=0.5)
+        result = asyncio.run(brain_compute_correction(params))
+        data = _json.loads(result)
+        assert data["status"] == "error"
+
+    def test_brain_compare_models_returns_json(self):
+        from server import CompareInput, ModelSpecInput, brain_compare_models
+
+        params = CompareInput(
+            left=ModelSpecInput(model_label="A", source_type="eigenvalues", eigenvalues=_EVALS_20),
+            right=ModelSpecInput(model_label="B", source_type="eigenvalues", eigenvalues=_EVALS_30),
+        )
+        result = asyncio.run(brain_compare_models(params))
+        data = _json.loads(result)
+        assert data["status"] in ("ok", "warning", "error")
+        assert "left_label" in data
+
+    def test_brain_compare_models_value_error_returns_error_json(self, monkeypatch):
+        import server as _srv
+
+        def _raise(*args, **kwargs):
+            raise ValueError("compare crash")
+
+        monkeypatch.setattr(_srv, "compare_models", _raise)
+        from server import CompareInput, ModelSpecInput, brain_compare_models
+
+        params = CompareInput(
+            left=ModelSpecInput(model_label="A", source_type="eigenvalues", eigenvalues=[1.0, 2.0, 3.0]),
+            right=ModelSpecInput(model_label="B", source_type="eigenvalues", eigenvalues=[1.0, 2.0, 3.0]),
+        )
+        result = asyncio.run(brain_compare_models(params))
+        data = _json.loads(result)
+        assert data["status"] == "error"
